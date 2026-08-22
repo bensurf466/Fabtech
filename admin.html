@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAC – Admin</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f8f9fa; color: #222; line-height: 1.6; }
+    a { text-decoration: none; color: inherit; }
+    button { cursor: pointer; border: none; background: none; font-family: inherit; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+    .hidden { display: none !important; }
+    .text-center { text-align: center; }
+    .mt-4 { margin-top: 2rem; }
+    .mb-4 { margin-bottom: 2rem; }
+    
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      padding: 0.8rem 0;
+    }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-size: 1.8rem; font-weight: 700; color: #FF5A00; }
+    .logo span { color: #0050B3; }
+    .nav { display: flex; gap: 1.5rem; align-items: center; }
+    .nav a { color: #555; font-weight: 500; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; }
+    .nav a:hover { background: #f0f0f0; }
+    .nav a.active { color: #FF5A00; border-bottom: 2px solid #FF5A00; }
+    
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .card h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 1rem; color: #333; }
+    .card h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.8rem; color: #555; }
+    
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.3rem; color: #555; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 0.7rem 1rem; border: 1px solid #ddd; border-radius: 6px;
+      font-size: 1rem; background: #fafafa; font-family: inherit;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      outline: none; border-color: #FF5A00; background: #fff;
+    }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    
+    .btn {
+      display: inline-block; padding: 0.6rem 1.5rem; border-radius: 50px; font-weight: 600;
+      transition: all 0.25s; border: none; font-size: 0.95rem;
+    }
+    .btn-primary { background: #FF5A00; color: #fff; }
+    .btn-primary:hover { background: #e04e00; }
+    .btn-secondary { background: #e9ecef; color: #333; }
+    .btn-secondary:hover { background: #dde1e6; }
+    .btn-success { background: #28a745; color: #fff; }
+    .btn-success:hover { background: #218838; }
+    .btn-danger { background: #dc3545; color: #fff; }
+    .btn-danger:hover { background: #c82333; }
+    .btn-sm { padding: 0.3rem 1rem; font-size: 0.8rem; }
+    
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+    
+    .badge {
+      display: inline-block; padding: 0.2rem 0.8rem; border-radius: 20px;
+      font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+    }
+    .badge-pending { background: #fff3cd; color: #856404; }
+    .badge-approved { background: #d4edda; color: #155724; }
+    .badge-rejected { background: #f8d7da; color: #721c24; }
+    .badge-active { background: #d4edda; color: #155724; }
+    .badge-draft { background: #fff3cd; color: #856404; }
+    .badge-unread { background: #dc3545; color: #fff; }
+    
+    .policy-item {
+      padding: 0.8rem 0; border-bottom: 1px solid #f0f0f0;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
+    }
+    .policy-item:last-child { border-bottom: none; }
+    .policy-item .info { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+    
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+      z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .modal-content {
+      background: #fff; max-width: 600px; width: 100%; max-height: 90vh;
+      overflow-y: auto; border-radius: 16px; padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .modal-close {
+      float: right; font-size: 1.8rem; cursor: pointer; color: #888;
+      transition: color 0.2s; line-height: 1;
+    }
+    .modal-close:hover { color: #222; }
+    .error-msg { color: #dc3545; font-size: 0.9rem; margin-top: 0.5rem; }
+    .success-msg { color: #28a745; font-size: 0.9rem; margin-top: 0.5rem; }
+    
+    .stat-card {
+      background: #fff; border-radius: 12px; padding: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      border-left: 4px solid #FF5A00; text-align: center;
+    }
+    .stat-card .number { font-size: 2.4rem; font-weight: 700; color: #222; line-height: 1.2; }
+    .stat-card .label { font-size: 0.9rem; color: #777; margin-top: 0.2rem; }
+    
+    .chart-container {
+      display: flex; align-items: flex-end; justify-content: space-around;
+      height: 180px; padding: 1rem 0; gap: 0.5rem;
+    }
+    .chart-bar {
+      flex: 1; background: #FF5A00; border-radius: 4px 4px 0 0;
+      min-height: 8px; transition: height 0.5s ease;
+    }
+    .chart-bar-wrapper { display: flex; flex-direction: column; align-items: center; flex: 1; }
+    .chart-bar-label { text-align: center; font-size: 0.7rem; color: #666; margin-top: 0.3rem; }
+    
+    .email-preview {
+      background: #f4f4f4; padding: 1rem; border-radius: 8px;
+      max-height: 400px; overflow-y: auto;
+    }
+    
+    .confirm-modal {
+      max-width: 450px; text-align: center;
+    }
+    .confirm-modal .icon { font-size: 3rem; margin-bottom: 0.5rem; }
+    .confirm-modal h3 { font-size: 1.3rem; margin-bottom: 0.5rem; }
+    .confirm-modal p { color: #666; margin-bottom: 1.5rem; }
+    .confirm-modal .buttons { display: flex; gap: 1rem; justify-content: center; }
+    
+    @media (max-width: 768px) {
+      .grid-4 { grid-template-columns: repeat(3, 1fr); }
+      .grid-2 { grid-template-columns: 1fr; }
+      .policy-item { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+    }
+    @media (max-width: 480px) {
+      .grid-4 { grid-template-columns: repeat(3, 1fr); }
+      .card { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="container header-inner">
+    <div class="logo">RAC<span></span> <span style="font-size:0.8rem; color:#888; font-weight:400;">Admin</span></div>
+    <div class="nav">
+      <a href="#" id="logoutLink" class="hidden">Logout</a>
+    </div>
+  </div>
+</header>
+
+<section id="loginPage">
+  <div class="container">
+    <div class="card" style="max-width:400px; margin:2rem auto;">
+      <h2 class="text-center">Admin Login</h2>
+      <form id="loginForm">
+        <div class="form-group"><label>Username</label><input type="text" id="loginUsername" placeholder="Enter username" required /></div>
+        <div class="form-group"><label>Password</label><input type="password" id="loginPassword" placeholder="Enter password" required /></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Login</button>
+        <div id="loginMessage" class="mt-4 text-center"></div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<section id="dashboardPage" class="hidden">
+  <div class="container">
+    <div class="flex-between">
+      <h2>Admin Dashboard</h2>
+      <div style="display:flex; gap:0.8rem; flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm tab-btn" data-tab="applications">📋 Applications</button>
+        <button class="btn btn-secondary btn-sm tab-btn" data-tab="policies">📄 Policies</button>
+        <button class="btn btn-secondary btn-sm tab-btn" data-tab="admins">👥 Admins</button>
+        <button class="btn btn-primary btn-sm" id="refreshBtn">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div class="grid-4" id="statsCards">
+      <div class="stat-card"><div class="number" id="statTotal">0</div><div class="label">Total Policies</div></div>
+      <div class="stat-card"><div class="number" id="statActive">0</div><div class="label">Active</div></div>
+      <div class="stat-card"><div class="number" id="statDraft">0</div><div class="label">Draft</div></div>
+      <div class="stat-card"><div class="number" id="statRevenue">£0</div><div class="label">Total Revenue</div></div>
+    </div>
+
+    <div class="card"><h3>Monthly Policy Creation</h3><div id="monthlyChart" class="chart-container"></div></div>
+
+    <div id="tab-applications" class="tab-content active">
+      <div class="card">
+        <h3>Pending Applications</h3>
+        <div id="pendingApplicationsList"><p class="text-center" style="color:#999;">Loading...</p></div>
+      </div>
+      <div class="card">
+        <h3>All Applications</h3>
+        <div id="allApplicationsList"><p class="text-center" style="color:#999;">Loading...</p></div>
+      </div>
+    </div>
+
+    <div id="tab-policies" class="tab-content">
+      <div class="card">
+        <h3>Recent Activity</h3>
+        <div id="recentPoliciesList"><p class="text-center" style="color:#999;">Loading...</p></div>
+      </div>
+      <div class="card">
+        <h3>All Policies</h3>
+        <div id="allPoliciesList"><p class="text-center" style="color:#999;">Loading...</p></div>
+      </div>
+    </div>
+
+    <div id="tab-admins" class="tab-content">
+      <div class="card">
+        <h3>Manage Admins</h3>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem;">
+          <input type="text" id="newAdminUsername" placeholder="Username" style="flex:1; padding:0.5rem; border:1px solid #ddd; border-radius:6px;" />
+          <input type="password" id="newAdminPassword" placeholder="Password" style="flex:1; padding:0.5rem; border:1px solid #ddd; border-radius:6px;" />
+          <button id="createAdminBtn" class="btn btn-primary btn-sm">Add Admin</button>
+        </div>
+        <div id="adminList"><p class="text-center" style="color:#999;">Loading...</p></div>
+        <div id="adminMsg" class="mt-4"></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div id="modalOverlay" class="modal-overlay hidden">
+  <div class="modal-content" id="modalContent">
+    <span class="modal-close" id="modalClose">&times;</span>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+  const BACKEND_URL = 'https://rac-ywmo.onrender.com';
+  const FRONTEND_URL = 'https://www.racdayinsure.online';
+
+  // ----- Use sessionStorage instead of localStorage -----
+  var token = sessionStorage.getItem('adminToken') || null;
+  var policies = [];
+  var applications = [];
+  var admins = [];
+
+  // ----- Detect if page is being reloaded (not navigating away) -----
+  function isPageReload() {
+    try {
+      const navEntries = performance.getEntriesByType('navigation');
+      if (navEntries.length > 0 && navEntries[0].type === 'reload') {
+        return true;
+      }
+      if (performance.navigation && performance.navigation.type === 1) {
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  // ----- Clear token on unload unless it's a reload -----
+  window.addEventListener('beforeunload', function(e) {
+    if (!isPageReload()) {
+      sessionStorage.removeItem('adminToken');
+      token = null;
+    }
+  });
+
+  // Also clear on logout
+  function logout() {
+    token = null;
+    sessionStorage.removeItem('adminToken');
+    document.getElementById('dashboardPage').classList.add('hidden');
+    document.getElementById('loginPage').classList.remove('hidden');
+    document.getElementById('logoutLink').classList.add('hidden');
+  }
+
+  function showConfirm(title, message, callback) {
+    const modalBody = document.getElementById('modalBody');
+    modalBody.innerHTML = `
+      <div class="confirm-modal">
+        <div class="icon">⚠️</div>
+        <h3>${title}</h3>
+        <p>${message}</p>
+        <div class="buttons">
+          <button class="btn btn-secondary" id="confirmCancel">Cancel</button>
+          <button class="btn btn-danger" id="confirmOk">Confirm</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('modalOverlay').classList.remove('hidden');
+    document.getElementById('modalClose').style.display = 'none';
+    document.getElementById('confirmCancel').addEventListener('click', () => {
+      closeModal();
+      if (callback) callback(false);
+    });
+    document.getElementById('confirmOk').addEventListener('click', () => {
+      closeModal();
+      if (callback) callback(true);
+    });
+  }
+
+  function showAlert(title, message, type) {
+    const modalBody = document.getElementById('modalBody');
+    const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+    const color = type === 'success' ? '#28a745' : type === 'error' ? '#dc3545' : '#FF5A00';
+    modalBody.innerHTML = `
+      <div class="confirm-modal">
+        <div class="icon" style="color:${color};">${icon}</div>
+        <h3 style="color:${color};">${title}</h3>
+        <p>${message}</p>
+        <div class="buttons">
+          <button class="btn btn-primary" id="alertOk">OK</button>
+        </div>
+      </div>
+    `;
+    document.getElementById('modalOverlay').classList.remove('hidden');
+    document.getElementById('modalClose').style.display = 'none';
+    document.getElementById('alertOk').addEventListener('click', closeModal);
+  }
+
+  function openModal(content) {
+    document.getElementById('modalBody').innerHTML = content;
+    document.getElementById('modalOverlay').classList.remove('hidden');
+    document.getElementById('modalClose').style.display = 'block';
+  }
+
+  window.closeModal = function() {
+    document.getElementById('modalOverlay').classList.add('hidden');
+    document.getElementById('modalBody').innerHTML = '';
+    document.getElementById('modalClose').style.display = 'block';
+  };
+
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.getElementById('modalOverlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+      document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+    });
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = document.getElementById('loginPassword').value.trim();
+    const msg = document.getElementById('loginMessage');
+    msg.innerHTML = 'Logging in...';
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Login failed');
+      token = data.token;
+      sessionStorage.setItem('adminToken', token);
+      document.getElementById('loginPage').classList.add('hidden');
+      document.getElementById('dashboardPage').classList.remove('hidden');
+      document.getElementById('logoutLink').classList.remove('hidden');
+      loadDashboard();
+      msg.innerHTML = '<span class="success-msg">Login successful!</span>';
+    } catch (err) {
+      msg.innerHTML = `<span class="error-msg">${err.message}</span>`;
+    }
+  });
+
+  document.getElementById('logoutLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    logout();
+  });
+
+  async function loadDashboard() {
+    if (!token) return;
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admin/stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        if (res.status === 401) { logout(); return; }
+        throw new Error('Failed to load stats');
+      }
+      const data = await res.json();
+      document.getElementById('statTotal').textContent = data.totalPolicies;
+      document.getElementById('statActive').textContent = data.activePolicies;
+      document.getElementById('statDraft').textContent = data.draftPolicies;
+      document.getElementById('statRevenue').textContent = `£${data.totalRevenue.toFixed(2)}`;
+      renderChart(data.monthlyData);
+      renderRecentPolicies(data.recentPolicies);
+      await loadApplications();
+      await loadAllPolicies();
+      await loadAdmins();
+    } catch (err) { 
+      showAlert('Error', err.message, 'error');
+    }
+  }
+
+  function renderChart(monthlyData) {
+    const container = document.getElementById('monthlyChart');
+    if (!monthlyData || monthlyData.length === 0) {
+      container.innerHTML = '<p class="text-center" style="color:#999;">No data</p>';
+      return;
+    }
+    const max = Math.max(...monthlyData.map(d => d.count), 1);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    container.innerHTML = monthlyData.map(d => {
+      const height = (d.count / max) * 150 + 8;
+      const monthName = months[d._id.month - 1] + ' ' + d._id.year;
+      return `<div class="chart-bar-wrapper"><div class="chart-bar" style="height:${height}px;"></div><div class="chart-bar-label">${monthName}</div></div>`;
+    }).join('');
+  }
+
+  function renderRecentPolicies(recent) {
+    const container = document.getElementById('recentPoliciesList');
+    if (!recent || recent.length === 0) {
+      container.innerHTML = '<p class="text-center" style="color:#999;">No recent policies</p>';
+      return;
+    }
+    container.innerHTML = recent.map(p => `
+      <div class="policy-item">
+        <div class="info">
+          <span><strong>${p.customer.firstName} ${p.customer.lastName}</strong></span>
+          <span>${p.policyDetails.policyNumber}</span>
+          <span class="badge ${p.policyDetails.status === 'active' ? 'badge-active' : 'badge-draft'}">${p.policyDetails.status}</span>
+        </div>
+        <span style="font-size:0.85rem; color:#888;">${new Date(p.createdAt).toLocaleDateString()}</span>
+      </div>
+    `).join('');
+  }
+
+  // ---------- VIEW APPLICATION ----------
+  window.viewApplication = async function(appId) {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/applications/${appId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to load application');
+      const app = await res.json();
+      const c = app.customer;
+      const v = app.vehicle;
+      const cd = app.coverDetails;
+      openModal(`
+        <h3>Application Details</h3>
+        <div class="grid-2">
+          <div><strong>Name:</strong> ${c.firstName} ${c.lastName}</div>
+          <div><strong>DOB:</strong> ${c.dob}</div>
+          <div><strong>Email:</strong> ${c.email}</div>
+          <div><strong>Mobile:</strong> ${c.mobile}</div>
+          <div><strong>Occupation:</strong> ${c.occupation || 'N/A'}</div>
+          <div><strong>Licence:</strong> ${c.drivingLicense}</div>
+          <div style="grid-column: span 2;"><strong>Address:</strong> ${c.addressLine1}${c.addressLine2 ? ', ' + c.addressLine2 : ''}, ${c.city}</div>
+          <div><strong>Postcode:</strong> ${c.postcode}</div>
+          <div><strong>Vehicle:</strong> ${v.make} ${v.model} (${v.registration}) ${v.year}</div>
+          <div><strong>Start Date:</strong> ${new Date(cd.startDate).toLocaleDateString('en-GB')}</div>
+          <div><strong>End Date:</strong> ${new Date(cd.endDate).toLocaleDateString('en-GB')}</div>
+          <div><strong>Status:</strong> <span class="badge ${app.status === 'pending' ? 'badge-pending' : app.status === 'approved' ? 'badge-approved' : 'badge-rejected'}">${app.status}</span></div>
+          ${app.status === 'approved' ? `<div><strong>Insurer:</strong> ${app.approvedDetails.insurer}</div><div><strong>Amount:</strong> £${app.approvedDetails.amount || 0}</div>` : ''}
+        </div>
+      `);
+    } catch (err) {
+      showAlert('Error', err.message, 'error');
+    }
+  };
+
+  // ---------- DELETE APPLICATION ----------
+  window.deleteApplication = function(appId) {
+    showConfirm('Delete Application', 'Are you sure you want to delete this application permanently? This action cannot be undone.', async (confirmed) => {
+      if (!confirmed) return;
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/applications/${appId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Delete failed');
+        showAlert('Deleted', 'Application has been deleted.', 'success');
+        loadApplications();
+        loadDashboard();
+      } catch (err) {
+        showAlert('Error', err.message, 'error');
+      }
+    });
+  };
+
+  async function loadApplications() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/applications`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        if (res.status === 401) { logout(); return; }
+        throw new Error('Failed to load applications');
+      }
+      applications = await res.json();
+      
+      const pending = applications.filter(a => a.status === 'pending');
+      const pendingContainer = document.getElementById('pendingApplicationsList');
+      if (pending.length === 0) {
+        pendingContainer.innerHTML = '<p class="text-center" style="color:#999;">No pending applications</p>';
+      } else {
+        pendingContainer.innerHTML = pending.map(a => `
+          <div class="policy-item">
+            <div class="info">
+              <span><strong>${a.customer.firstName} ${a.customer.lastName}</strong></span>
+              <span>${a.vehicle.make} ${a.vehicle.model} (${a.vehicle.registration})</span>
+              <span class="badge badge-pending">pending</span>
+            </div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+              <button class="btn btn-secondary btn-sm" onclick="viewApplication('${a._id}')">View</button>
+              <button class="btn btn-success btn-sm" onclick="showApproveModal('${a._id}')">Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="rejectApplication('${a._id}')">Reject</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteApplication('${a._id}')">Delete</button>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      const allContainer = document.getElementById('allApplicationsList');
+      if (applications.length === 0) {
+        allContainer.innerHTML = '<p class="text-center" style="color:#999;">No applications</p>';
+      } else {
+        allContainer.innerHTML = applications.map(a => `
+          <div class="policy-item">
+            <div class="info">
+              <span><strong>${a.customer.firstName} ${a.customer.lastName}</strong></span>
+              <span>${a.vehicle.make} ${a.vehicle.model}</span>
+              <span class="badge ${a.status === 'pending' ? 'badge-pending' : a.status === 'approved' ? 'badge-approved' : 'badge-rejected'}">${a.status}</span>
+              ${a.status === 'approved' ? `<span style="font-size:0.8rem; color:#888;">£${a.approvedDetails.amount || 0}</span>` : ''}
+            </div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+              <button class="btn btn-secondary btn-sm" onclick="viewApplication('${a._id}')">View</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteApplication('${a._id}')">Delete</button>
+            </div>
+            <span style="font-size:0.85rem; color:#888;">${new Date(a.createdAt).toLocaleDateString()}</span>
+          </div>
+        `).join('');
+      }
+    } catch (err) {
+      showAlert('Error', err.message, 'error');
+    }
+  }
+
+  window.showApproveModal = function(appId) {
+    const app = applications.find(a => a._id === appId);
+    if (!app) return;
+    openModal(`
+      <h3>Approve Application</h3>
+      <p style="font-size:0.9rem; color:#666; margin-bottom:1rem;">
+        <strong>${app.customer.firstName} ${app.customer.lastName}</strong> – 
+        ${app.vehicle.make} ${app.vehicle.model} (${app.vehicle.registration})
+      </p>
+      <form id="approveForm">
+        <div class="form-group">
+          <label>Insurer *</label>
+          <input type="text" id="approveInsurer" placeholder="e.g. Aviva" required />
+        </div>
+        <div class="form-group">
+          <label>Total Amount (£) *</label>
+          <input type="number" id="approveAmount" placeholder="74.31" step="0.01" required />
+        </div>
+        <button type="submit" class="btn btn-success" style="width:100%;">Approve & Generate Policy</button>
+        <div id="approveMsg" class="mt-4"></div>
+      </form>
+    `);
+
+    document.getElementById('approveForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const insurer = document.getElementById('approveInsurer').value.trim();
+      const amount = parseFloat(document.getElementById('approveAmount').value);
+      const msg = document.getElementById('approveMsg');
+      if (!insurer || !amount) {
+        msg.innerHTML = '<span class="error-msg">Please fill in all fields</span>';
+        return;
+      }
+      msg.innerHTML = 'Approving...';
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/applications/${appId}/approve`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ insurer, amount })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Approval failed');
+        msg.innerHTML = '<span class="success-msg">✅ Approved! Policy created.</span>';
+        setTimeout(() => {
+          closeModal();
+          showCopyEmailModal(data.policy, data.emailHtml);
+          // Force refresh both dashboard and policies list
+          loadDashboard();
+          loadAllPolicies(); // <--- ADDED THIS LINE
+        }, 1000);
+      } catch (err) {
+        msg.innerHTML = `<span class="error-msg">${err.message}</span>`;
+      }
+    });
+  };
+
+  window.rejectApplication = function(appId) {
+    showConfirm('Reject Application', 'Are you sure you want to reject this application?', async (confirmed) => {
+      if (!confirmed) return;
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/applications/${appId}/reject`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Rejection failed');
+        showAlert('Rejected', 'Application has been rejected.', 'success');
+        loadDashboard();
+      } catch (err) {
+        showAlert('Error', err.message, 'error');
+      }
+    });
+  };
+
+  function showCopyEmailModal(policy, emailHtml) {
+    openModal(`
+      <h3>📧 Email Preview</h3>
+      <p style="font-size:0.9rem; color:#666; margin-bottom:0.5rem;">
+        <strong>Customer:</strong> ${policy.customer.firstName} ${policy.customer.lastName} &nbsp;|&nbsp; 
+        <strong>Email:</strong> ${policy.customer.email}
+      </p>
+      <div style="background:#f4f4f4; padding:0.5rem; border-radius:8px; margin-bottom:1rem;">
+        <div style="background:#fff; padding:0.5rem; border-radius:4px; max-height:350px; overflow-y:auto; border:1px solid #ddd;">
+          ${emailHtml}
+        </div>
+      </div>
+      <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="copyEmailHtml()">📋 Copy to Clipboard</button>
+        <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+      </div>
+      <div id="copyMsg" class="mt-4"></div>
+    `);
+    window._emailHtml = emailHtml;
+  }
+
+  window.copyEmailHtml = function() {
+    const html = window._emailHtml;
+    if (!html) return;
+    const temp = document.createElement('textarea');
+    temp.value = html;
+    document.body.appendChild(temp);
+    temp.select();
+    document.execCommand('copy');
+    document.body.removeChild(temp);
+    document.getElementById('copyMsg').innerHTML = '<span class="success-msg">✅ Copied to clipboard!</span>';
+  };
+
+  window.copyPolicyEmail = async function(policyId) {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/policies/${policyId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to load policy');
+      const policy = await res.json();
+      const emailHtml = generateSimpleEmailHTML(policy);
+      showCopyEmailModal(policy, emailHtml);
+    } catch (err) {
+      showAlert('Error', err.message, 'error');
+    }
+  };
+
+  // ============================================================
+  // UPDATED EMAIL GENERATION – matches server version
+  // ============================================================
+  function generateSimpleEmailHTML(policy) {
+    const dashboardUrl = `${FRONTEND_URL}/dashboard.html`;
+    const manageLink = `${dashboardUrl}?token=${policy.policyDetails.uniqueToken}`;
+    
+    const start = new Date(policy.policyDetails.startDate);
+    const end = new Date(policy.policyDetails.endDate);
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const duration = `${diffDays} days`;
+
+    const fullName = `${policy.customer.firstName} ${policy.customer.lastName}`;
+    const vehicleDisplay = `${policy.vehicle.make} ${policy.vehicle.model} (${policy.vehicle.registration})`;
+    const amount = policy.policyDetails.amount;
+    const total = amount;
+
+    const racLogo = `${FRONTEND_URL}/picture/1.png`;
+    const dayinsureLogo = `${FRONTEND_URL}/picture/2.png`;
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="color-scheme" content="light only">
+  <meta name="supported-color-schemes" content="light only">
+  <meta name="darkmode" content="false">
+  <title>RAC Insurance – Policy Details</title>
+  <style>
+    body, body * {
+      background-color: #ffffff !important;
+      background: #ffffff !important;
+      color: #000000 !important;
+      font-family: Arial, Helvetica, sans-serif !important;
+    }
+    table, td, tr, tbody, thead, th, div, p, span, a, strong, h1, h2, h3, h4, h5, h6 {
+      background-color: #ffffff !important;
+      background: #ffffff !important;
+      color: #000000 !important;
+    }
+    .policy-row {
+      padding: 40px 0 !important;
+    }
+    .label {
+      font-weight: bold !important;
+      color: #000000 !important;
+      padding-right: 15px !important;
+      white-space: nowrap !important;
+      vertical-align: top !important;
+    }
+    .value {
+      color: #000000 !important;
+      word-wrap: break-word !important;
+      vertical-align: top !important;
+    }
+    .logo-img {
+      display: block !important;
+      max-width: 100% !important;
+      height: auto !important;
+      max-height: 50px !important;
+      width: auto !important;
+      border: 0 !important;
+    }
+    .logo-cell-left {
+      text-align: left !important;
+      padding-right: 0 !important;
+      width: 50% !important;
+      vertical-align: middle !important;
+    }
+    .logo-cell-right {
+      text-align: right !important;
+      padding-left: 0 !important;
+      width: 50% !important;
+      vertical-align: middle !important;
+    }
+    .faq-link {
+      color: #FF5A00 !important;
+      text-decoration: underline !important;
+      font-weight: bold !important;
+      font-size: 13px !important;
+      font-variant: small-caps !important;
+    }
+    .green-card {
+      background-color: #1e7e34 !important;
+      background: #1e7e34 !important;
+      border-radius: 8px !important;
+      padding: 18px 20px !important;
+      text-align: center !important;
+      display: block !important;
+    }
+    .green-card a {
+      color: #ffffff !important;
+      font-weight: bold !important;
+      font-size: 16px !important;
+      text-decoration: none !important;
+      display: block !important;
+      background-color: transparent !important;
+    }
+    @media (max-width: 480px) {
+      .logo-img { max-height: 35px !important; }
+      .logo-cell-left, .logo-cell-right { width: 50% !important; padding: 0 !important; }
+      .logo-cell-left { text-align: left !important; }
+      .logo-cell-right { text-align: right !important; }
+      .policy-row { padding: 25px 0 !important; }
+      .green-card { padding: 14px 15px !important; }
+      .green-card a { font-size: 14px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:#ffffff !important; background:#ffffff !important; font-family: Arial, Helvetica, sans-serif;" bgcolor="#ffffff">
+<div style="background-color:#ffffff !important; background:#ffffff !important; padding:20px 0;" data-darkmode-ignore="true">
+<table width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="background-color:#ffffff !important; background:#ffffff !important; padding:20px 0;">
+  <tr>
+    <td align="center" bgcolor="#ffffff" style="background-color:#ffffff !important; background:#ffffff !important;">
+      <table width="650" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="background-color:#ffffff !important; background:#ffffff !important; border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,0.08); padding:35px; border-collapse:collapse; max-width:650px;">
+
+        <!-- HEADER WITH TWO LOGOS AT EDGES -->
+        <tr>
+          <td bgcolor="#ffffff" style="padding-bottom:20px; background-color:#ffffff !important; background:#ffffff !important;">
+            <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="background-color:#ffffff !important; background:#ffffff !important;">
+              <tr>
+                <td align="left" valign="middle" bgcolor="#ffffff" class="logo-cell-left" style="background-color:#ffffff !important; background:#ffffff !important;">
+                  <img src="${racLogo}" alt="RAC" class="logo-img" style="display:block; max-width:100%; height:auto; max-height:50px; width:auto; border:0;" />
+                </td>
+                <td align="right" valign="middle" bgcolor="#ffffff" class="logo-cell-right" style="background-color:#ffffff !important; background:#ffffff !important;">
+                  <img src="${dayinsureLogo}" alt="Dayinsure" class="logo-img" style="display:block; max-width:100%; height:auto; max-height:50px; width:auto; border:0;" />
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- GREETING -->
+        <tr>
+          <td bgcolor="#ffffff" style="padding:25px 0 10px 0; background-color:#ffffff !important; background:#ffffff !important; text-align:center;">
+            <span style="font-size:20px; color:#FF5A00 !important; font-weight:bold; line-height:1.6;">
+              Hi ${fullName},<br>Thank you for insuring your vehicle with Dayinsure.
+            </span>
+          </td>
+        </tr>
+
+        <!-- POLICY DETAILS – triple spacing -->
+        <tr>
+          <td bgcolor="#ffffff" style="padding:5px 0; background-color:#ffffff !important; background:#ffffff !important;">
+            <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="background-color:#ffffff !important; background:#ffffff !important; font-size:15px; border-collapse:collapse;">
+              <tr class="policy-row"><td bgcolor="#ffffff" class="label" style="background-color:#ffffff !important; background:#ffffff !important;">Policy number:</td><td bgcolor="#ffffff" class="value" style="background-color:#ffffff !important; background:#ffffff !important;">${policy.policyDetails.policyNumber}</td></tr>
+              <tr class="policy-row"><td bgcolor="#ffffff" class="label" style="background-color:#ffffff !important; background:#ffffff !important;">Policy start:</td><td bgcolor="#ffffff" class="value" style="background-color:#ffffff !important; background:#ffffff !important;">${new Date(policy.policyDetails.startDate).toLocaleDateString('en-GB')} at ${new Date(policy.policyDetails.startDate).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'})}</td></tr>
+              <tr class="policy-row"><td bgcolor="#ffffff" class="label" style="background-color:#ffffff !important; background:#ffffff !important;">Policy end:</td><td bgcolor="#ffffff" class="value" style="background-color:#ffffff !important; background:#ffffff !important;">${new Date(policy.policyDetails.endDate).toLocaleDateString('en-GB')} at ${new Date(policy.policyDetails.endDate).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'})}</td></tr>
+              <tr class="policy-row"><td bgcolor="#ffffff" class="label" style="background-color:#ffffff !important; background:#ffffff !important;">Insured by:</td><td bgcolor="#ffffff" class="value" style="background-color:#ffffff !important; background:#ffffff !important;">${policy.policyDetails.insurer}</td></tr>
+              <tr class="policy-row"><td bgcolor="#ffffff" class="label" style="background-color:#ffffff !important; background:#ffffff !important;">Duration:</td><td bgcolor="#ffffff" class="value" style="background-color:#ffffff !important; background:#ffffff !important;">${duration}</td></tr>
+              <tr class="policy-row"><td bgcolor="#ffffff" class="label" style="background-color:#ffffff !important; background:#ffffff !important;">Vehicle:</td><td bgcolor="#ffffff" class="value" style="background-color:#ffffff !important; background:#ffffff !important;">${vehicleDisplay}</td></tr>
+              <tr class="policy-row" style="border-bottom: none !important;"><td bgcolor="#ffffff" class="label" style="color:#FF5A00 !important; font-weight:bold; background-color:#ffffff !important; background:#ffffff !important;">Total cost:</td><td bgcolor="#ffffff" class="value" style="color:#FF5A00 !important; font-weight:bold; font-size:18px; background-color:#ffffff !important; background:#ffffff !important;">£${total.toFixed(2)}</td></tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- NB NOTE -->
+        <tr>
+          <td bgcolor="#ffffff" style="padding:15px 0 10px 0; font-size:14px; background-color:#ffffff !important; background:#ffffff !important; text-align:left;">
+            <strong style="color:#000000 !important;">NB:</strong> <span style="color:#000000 !important;">Total cost includes IPT at 12% and admin fee payable to Dayinsure.</span>
+          </td>
+        </tr>
+
+        <!-- GREEN CARD -->
+        <tr>
+          <td bgcolor="#ffffff" style="padding:10px 0 15px 0; background-color:#ffffff !important; background:#ffffff !important; text-align:center;">
+            <div class="green-card" style="background-color:#1e7e34 !important; background:#1e7e34 !important; border-radius:8px !important; padding:18px 20px !important; text-align:center !important; display:block !important;">
+              <a href="${manageLink}" style="color:#ffffff !important; font-weight:bold !important; font-size:16px !important; text-decoration:none !important; display:block !important; background-color:transparent !important; background:transparent !important;">Manage Policy & View Documents</a>
+            </div>
+          </td>
+        </tr>
+
+        <!-- FAQ line -->
+        <tr>
+          <td bgcolor="#ffffff" style="padding:10px 0 5px 0; background-color:#ffffff !important; background:#ffffff !important; text-align:center; font-size:14px;">
+            <span style="color:#000000 !important;">If you have any questions about our policy, check out our</span>
+            <a href="#" class="faq-link" style="color:#FF5A00 !important; text-decoration:underline !important; font-weight:bold !important; font-size:13px !important; font-variant:small-caps !important;">FAQ'S</a>
+            <span style="color:#000000 !important;">or</span>
+            <a href="#" class="faq-link" style="color:#FF5A00 !important; text-decoration:underline !important; font-weight:bold !important; font-size:13px !important; font-variant:small-caps !important;">CONTACT PAGE</a>
+          </td>
+        </tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td bgcolor="#ffffff" style="font-size:11px; background-color:#ffffff !important; background:#ffffff !important; text-align:center; line-height:1.8; padding-top:20px; border-top:1px solid #eee; margin-top:20px;">
+            <span style="color:#888888 !important;">RAC Financial Services Limited act as an introducer to Dayinsure.com Ltd for RAC Day Insurance.<br>RAC Financial Services Limited is registered in England No. 5171817. Registered Office: RAC House, Brockhurst Crescent, Walsall WS5 4AW.<br>RAC Day Insurance is arranged and administered by Dayinsure.com Ltd, which is registered in England no. 04996289, registered office: Mara House, Tarporley Business Centre, Nantwich Road, Tarporley, Cheshire CW6 9UY.<br>Both companies are authorised and regulated by the Financial Conduct Authority.<br>RAC Day Insurance is underwritten by Aviva Insurance Limited. Registered in Scotland, No 2116. Registered Office: Pitheavlis, Perth PH2 0NH.<br>Aviva Insurance Limited are authorised by the Prudential Regulation Authority and regulated by the Financial Conduct Authority and the Prudential Regulation Authority.</span>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</div>
+</body>
+</html>`;
+  }
+
+  async function loadAllPolicies() {
+    const container = document.getElementById('allPoliciesList');
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/policies`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        if (res.status === 401) { logout(); return; }
+        throw new Error('Failed to load policies');
+      }
+      policies = await res.json();
+      if (policies.length === 0) {
+        container.innerHTML = '<p class="text-center" style="color:#999;">No policies created yet.</p>';
+        return;
+      }
+      container.innerHTML = policies.map(p => `
+        <div class="policy-item">
+          <div class="info">
+            <span><strong>${p.customer.firstName} ${p.customer.lastName}</strong></span>
+            <span>${p.vehicle.make} ${p.vehicle.model}</span>
+            <span>${p.policyDetails.policyNumber}</span>
+            <span class="badge ${p.policyDetails.status === 'active' ? 'badge-active' : 'badge-draft'}">${p.policyDetails.status}</span>
+          </div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" onclick="viewPolicy('${p._id}')">View</button>
+            ${p.policyDetails.status === 'active' ? `<button class="btn btn-success btn-sm" onclick="copyPolicyEmail('${p._id}')">📋 Copy Email</button>` : ''}
+            <button class="btn btn-danger btn-sm" onclick="deletePolicy('${p._id}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      container.innerHTML = `<span class="error-msg">${err.message}</span>`;
+    }
+  }
+
+  window.viewPolicy = async function(id) {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/policies/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to load');
+      const p = await res.json();
+      const c = p.customer; const v = p.vehicle; const pd = p.policyDetails;
+      openModal(`
+        <h3>Policy Details</h3>
+        <div class="grid-2">
+          <div><strong>Number:</strong> ${pd.policyNumber}</div>
+          <div><strong>Status:</strong> <span class="badge ${pd.status === 'active' ? 'badge-active' : 'badge-draft'}">${pd.status}</span></div>
+          <div><strong>Name:</strong> ${c.firstName} ${c.lastName}</div>
+          <div><strong>DOB:</strong> ${c.dob}</div>
+          <div><strong>Licence:</strong> ${c.drivingLicense}</div>
+          <div><strong>Occupation:</strong> ${c.occupation || 'N/A'}</div>
+          <div><strong>Email:</strong> ${c.email}</div>
+          <div><strong>Mobile:</strong> ${c.mobile}</div>
+          <div><strong>Address:</strong> ${c.addressLine1}, ${c.city}, ${c.postcode}</div>
+          <div><strong>Vehicle:</strong> ${v.make} ${v.model} (${v.registration}) ${v.year}</div>
+          <div><strong>Amount:</strong> £${pd.amount.toFixed(2)}</div>
+          <div><strong>Start:</strong> ${new Date(pd.startDate).toLocaleDateString('en-GB')}</div>
+          <div><strong>End:</strong> ${new Date(pd.endDate).toLocaleDateString('en-GB')}</div>
+          <div><strong>Insurer:</strong> ${pd.insurer || 'Aviva'}</div>
+        </div>
+        ${pd.uniqueToken ? `<p><strong>Token:</strong> ${pd.uniqueToken}</p><p><strong>Link:</strong> <a href="${FRONTEND_URL}/dashboard.html?token=${pd.uniqueToken}" target="_blank">View Dashboard</a></p>` : ''}
+      `);
+    } catch (err) { 
+      showAlert('Error', err.message, 'error');
+    }
+  };
+
+  window.deletePolicy = function(id) {
+    showConfirm('Delete Policy', 'Are you sure you want to delete this policy permanently? This action cannot be undone.', async (confirmed) => {
+      if (!confirmed) return;
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/policies/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Delete failed');
+        showAlert('Deleted', 'Policy has been deleted successfully.', 'success');
+        loadDashboard();
+      } catch (err) {
+        showAlert('Error', err.message, 'error');
+      }
+    });
+  };
+
+  async function loadAdmins() {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admins`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Failed to load admins');
+      admins = await res.json();
+      const container = document.getElementById('adminList');
+      if (admins.length === 0) {
+        container.innerHTML = '<p class="text-center" style="color:#999;">No admins</p>';
+        return;
+      }
+      container.innerHTML = admins.map(a => `
+        <div class="policy-item">
+          <span><strong>${a.username}</strong></span>
+          <button class="btn btn-danger btn-sm" onclick="deleteAdmin('${a._id}')">Delete</button>
+        </div>
+      `).join('');
+    } catch (err) {
+      document.getElementById('adminList').innerHTML = `<span class="error-msg">${err.message}</span>`;
+    }
+  }
+
+  document.getElementById('createAdminBtn').addEventListener('click', async () => {
+    const username = document.getElementById('newAdminUsername').value.trim();
+    const password = document.getElementById('newAdminPassword').value.trim();
+    const msg = document.getElementById('adminMsg');
+    if (!username || !password) {
+      msg.innerHTML = '<span class="error-msg">Fill both fields</span>';
+      return;
+    }
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/admins`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ username, password })
+      });
+      if (!res.ok) throw new Error('Failed');
+      msg.innerHTML = '<span class="success-msg">Admin created!</span>';
+      document.getElementById('newAdminUsername').value = '';
+      document.getElementById('newAdminPassword').value = '';
+      loadAdmins();
+    } catch (err) {
+      msg.innerHTML = `<span class="error-msg">${err.message}</span>`;
+    }
+  });
+
+  window.deleteAdmin = function(id) {
+    showConfirm('Delete Admin', 'Are you sure you want to delete this admin?', async (confirmed) => {
+      if (!confirmed) return;
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/admins/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed');
+        showAlert('Deleted', 'Admin has been deleted.', 'success');
+        loadAdmins();
+      } catch (err) {
+        showAlert('Error', err.message, 'error');
+      }
+    });
+  };
+
+  document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
+
+  (function init() {
+    if (token) {
+      document.getElementById('loginPage').classList.add('hidden');
+      document.getElementById('dashboardPage').classList.remove('hidden');
+      document.getElementById('logoutLink').classList.remove('hidden');
+      loadDashboard();
+    }
+  })();
+</script>
+</body>
+</html>
