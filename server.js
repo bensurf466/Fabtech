@@ -6,20 +6,16 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
-const sharp = require('sharp');
 const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ═══════════════════════════════════════════════════════════════
-//  FALLBACK CONFIG (so server never crashes on missing vars)
-// ═══════════════════════════════════════════════════════════════
+// ─── CONFIG WITH FALLBACKS ───
 const MONGODB_URI =
   process.env.MONGODB_URI ||
   'mongodb+srv://FABTECH:Fabtech@exhibition.6dlhmwy.mongodb.net/?appName=EXHIBITION';
-const JWT_SECRET =
-  process.env.JWT_SECRET || 'fabtech_super_secret_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'fabtech_super_secret_key_2026';
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'o3wq4srt',
@@ -29,17 +25,13 @@ cloudinary.config({
 
 console.log('✅ Cloudinary configured:', cloudinary.config().cloud_name);
 
-// ═══════════════════════════════════════════════════════════════
-//  MIDDLEWARE
-// ═══════════════════════════════════════════════════════════════
+// ─── MIDDLEWARE ───
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(express.static(__dirname)); // serve static files
+app.use(express.static(__dirname));
 
-// ═══════════════════════════════════════════════════════════════
-//  MULTER (memory storage)
-// ═══════════════════════════════════════════════════════════════
+// ─── MULTER ───
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
@@ -49,25 +41,18 @@ const upload = multer({
     if (allowed.includes(file.mimetype) || file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only images and videos allowed.'), false);
+      cb(new Error('Invalid file type'), false);
     }
   },
 });
 
-// ═══════════════════════════════════════════════════════════════
-//  DATABASE CONNECTION
-// ═══════════════════════════════════════════════════════════════
+// ─── DATABASE ───
 mongoose
   .connect(MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected'))
-  .catch((err) => {
-    console.error('❌ MongoDB error:', err);
-    // Do not exit – allow server to start even without DB (for testing)
-  });
+  .catch(err => console.error('❌ MongoDB error:', err));
 
-// ═══════════════════════════════════════════════════════════════
-//  MODELS
-// ═══════════════════════════════════════════════════════════════
+// ─── MODELS ───
 // User
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -79,7 +64,7 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
-// Home (categories & videos)
+// Home
 const HomeSchema = new mongoose.Schema({
   type: { type: String, enum: ['category', 'video'], required: true },
   title: { type: String, required: true },
@@ -125,9 +110,7 @@ const SettingSchema = new mongoose.Schema({
 });
 const Setting = mongoose.model('Setting', SettingSchema);
 
-// ═══════════════════════════════════════════════════════════════
-//  AUTH HELPERS
-// ═══════════════════════════════════════════════════════════════
+// ─── AUTH HELPERS ───
 function generateToken(user) {
   return jwt.sign(
     { id: user._id, email: user.email, role: user.role, name: user.name },
@@ -158,21 +141,7 @@ function adminOnly(req, res, next) {
   next();
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  IMAGE PROCESSING & CLOUDINARY
-// ═══════════════════════════════════════════════════════════════
-async function processImage(buffer) {
-  try {
-    return await sharp(buffer)
-      .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 80 })
-      .toBuffer();
-  } catch (err) {
-    console.warn('Sharp fallback, using original buffer:', err.message);
-    return buffer;
-  }
-}
-
+// ─── CLOUDINARY UPLOAD (direct, no sharp) ───
 function uploadToCloudinary(buffer, folder = 'fabtech', resourceType = 'auto') {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
@@ -187,9 +156,7 @@ function uploadToCloudinary(buffer, folder = 'fabtech', resourceType = 'auto') {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
-//  AUTH ROUTES
-// ═══════════════════════════════════════════════════════════════
+// ─── AUTH ROUTES ─────────────────────────────
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
@@ -249,9 +216,7 @@ app.get('/api/auth/me', verifyToken, async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
-//  HOME ROUTES
-// ═══════════════════════════════════════════════════════════════
+// ─── HOME ROUTES ─────────────────────────────
 app.get('/api/home', async (req, res) => {
   try {
     const items = await Home.find().sort({ createdAt: -1 });
@@ -282,8 +247,7 @@ app.post('/api/home', verifyToken, adminOnly, upload.single('media'), async (req
       publicId = '';
     if (req.file) {
       const isVideo = req.file.mimetype.startsWith('video/');
-      const buffer = isVideo ? req.file.buffer : await processImage(req.file.buffer);
-      const result = await uploadToCloudinary(buffer, 'fabtech/home', isVideo ? 'video' : 'image');
+      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/home', isVideo ? 'video' : 'image');
       mediaUrl = result.secure_url;
       publicId = result.public_id;
     }
@@ -306,8 +270,7 @@ app.put('/api/home/:id', verifyToken, adminOnly, upload.single('media'), async (
     if (req.file) {
       if (item.publicId) await cloudinary.uploader.destroy(item.publicId).catch(() => {});
       const isVideo = req.file.mimetype.startsWith('video/');
-      const buffer = isVideo ? req.file.buffer : await processImage(req.file.buffer);
-      const result = await uploadToCloudinary(buffer, 'fabtech/home', isVideo ? 'video' : 'image');
+      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/home', isVideo ? 'video' : 'image');
       mediaUrl = result.secure_url;
       publicId = result.public_id;
     }
@@ -337,9 +300,7 @@ app.delete('/api/home/:id', verifyToken, adminOnly, async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
-//  PROJECT ROUTES
-// ═══════════════════════════════════════════════════════════════
+// ─── PROJECT ROUTES ──────────────────────────
 app.get('/api/projects', async (req, res) => {
   try {
     const { category, mediaType } = req.query;
@@ -374,8 +335,7 @@ app.post('/api/projects', verifyToken, adminOnly, upload.single('media'), async 
       return res.status(400).json({ error: 'Media file is required' });
     }
     const isVideo = mediaType === 'video' || req.file.mimetype.startsWith('video/');
-    const buffer = isVideo ? req.file.buffer : await processImage(req.file.buffer);
-    const result = await uploadToCloudinary(buffer, 'fabtech/projects', isVideo ? 'video' : 'image');
+    const result = await uploadToCloudinary(req.file.buffer, 'fabtech/projects', isVideo ? 'video' : 'image');
     const project = new Project({
       category,
       mediaType,
@@ -402,8 +362,7 @@ app.put('/api/projects/:id', verifyToken, adminOnly, upload.single('media'), asy
     if (req.file) {
       if (project.publicId) await cloudinary.uploader.destroy(project.publicId).catch(() => {});
       const isVideo = mediaType === 'video' || req.file.mimetype.startsWith('video/');
-      const buffer = isVideo ? req.file.buffer : await processImage(req.file.buffer);
-      const result = await uploadToCloudinary(buffer, 'fabtech/projects', isVideo ? 'video' : 'image');
+      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/projects', isVideo ? 'video' : 'image');
       mediaUrl = result.secure_url;
       publicId = result.public_id;
     }
@@ -433,9 +392,7 @@ app.delete('/api/projects/:id', verifyToken, adminOnly, async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
-//  TEAM ROUTES
-// ═══════════════════════════════════════════════════════════════
+// ─── TEAM ROUTES ─────────────────────────────
 app.get('/api/team', async (req, res) => {
   try {
     const members = await Team.find().sort({ createdAt: -1 });
@@ -464,8 +421,7 @@ app.post('/api/team', verifyToken, adminOnly, upload.single('photo'), async (req
     let photoUrl = '',
       publicId = '';
     if (req.file) {
-      const buffer = await processImage(req.file.buffer);
-      const result = await uploadToCloudinary(buffer, 'fabtech/team', 'image');
+      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/team', 'image');
       photoUrl = result.secure_url;
       publicId = result.public_id;
     }
@@ -487,8 +443,7 @@ app.put('/api/team/:id', verifyToken, adminOnly, upload.single('photo'), async (
       publicId = member.photo?.publicId || '';
     if (req.file) {
       if (member.photo?.publicId) await cloudinary.uploader.destroy(member.photo.publicId).catch(() => {});
-      const buffer = await processImage(req.file.buffer);
-      const result = await uploadToCloudinary(buffer, 'fabtech/team', 'image');
+      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/team', 'image');
       photoUrl = result.secure_url;
       publicId = result.public_id;
     }
@@ -516,9 +471,7 @@ app.delete('/api/team/:id', verifyToken, adminOnly, async (req, res) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
-//  SETTINGS ROUTES
-// ═══════════════════════════════════════════════════════════════
+// ─── SETTINGS ROUTES ─────────────────────────
 app.get('/api/settings', async (req, res) => {
   try {
     const settings = await Setting.find();
@@ -542,11 +495,9 @@ app.get('/api/settings/:key', async (req, res) => {
 
 app.put('/api/settings/:key', verifyToken, adminOnly, upload.single('media'), async (req, res) => {
   try {
-    // If key is 'heroVideo' and a file is uploaded, handle it
     if (req.params.key === 'heroVideo' && req.file) {
       const isVideo = req.file.mimetype.startsWith('video/');
-      const buffer = isVideo ? req.file.buffer : await processImage(req.file.buffer);
-      const result = await uploadToCloudinary(buffer, 'fabtech/hero', isVideo ? 'video' : 'image');
+      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/hero', isVideo ? 'video' : 'image');
       const value = result.secure_url;
       const setting = await Setting.findOneAndUpdate(
         { key: req.params.key },
@@ -555,7 +506,6 @@ app.put('/api/settings/:key', verifyToken, adminOnly, upload.single('media'), as
       );
       return res.json(setting);
     }
-    // Otherwise update value from JSON body
     const { value } = req.body;
     if (value === undefined) {
       return res.status(400).json({ error: 'Value is required' });
@@ -572,9 +522,7 @@ app.put('/api/settings/:key', verifyToken, adminOnly, upload.single('media'), as
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
-//  STATIC FILES & TEST
-// ═══════════════════════════════════════════════════════════════
+// ─── STATIC & TEST ───────────────────────────
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
@@ -583,7 +531,6 @@ app.get('/api/test', (req, res) => {
   res.json({ message: '✅ FABTECH Server is running!' });
 });
 
-// Fallback for .html files
 app.use((req, res, next) => {
   if (req.path.endsWith('.html')) {
     res.sendFile(path.join(__dirname, req.path));
@@ -592,9 +539,7 @@ app.use((req, res, next) => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════
-//  ERROR HANDLER
-// ═══════════════════════════════════════════════════════════════
+// ─── ERROR HANDLER ───────────────────────────
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     return res.status(400).json({ error: err.message });
@@ -603,12 +548,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
-// ═══════════════════════════════════════════════════════════════
-//  START SERVER
-// ═══════════════════════════════════════════════════════════════
+// ─── START ──────────────────────────────────
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌐 Home: http://localhost:${PORT}/`);
   console.log(`🔐 Admin: http://localhost:${PORT}/admin`);
-  console.log(`🧪 Test: http://localhost:${PORT}/api/test`);
 });
