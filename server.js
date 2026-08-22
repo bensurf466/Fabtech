@@ -4,17 +4,15 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const multer = require('multer');
+const fileUpload = require('express-fileupload');
 const cloudinary = require('cloudinary').v2;
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 5000;
 
-// ─── FALLBACK CONFIG (prevents crashes) ───
-const MONGODB_URI =
-  process.env.MONGODB_URI ||
-  'mongodb+srv://FABTECH:Fabtech@exhibition.6dlhmwy.mongodb.net/?appName=EXHIBITION';
+// ─── CONFIG ───
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://FABTECH:Fabtech@exhibition.6dlhmwy.mongodb.net/?appName=EXHIBITION';
 const JWT_SECRET = process.env.JWT_SECRET || 'fabtech_secret_2026';
 
 cloudinary.config({
@@ -29,28 +27,13 @@ console.log('✅ Cloudinary configured');
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(fileUpload({ limits: { fileSize: 50 * 1024 * 1024 } }));
 app.use(express.static(__dirname));
 
-// ─── MULTER ───
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage,
-  limits: { fileSize: 50 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'video/quicktime'];
-    if (allowed.includes(file.mimetype) || file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type'), false);
-    }
-  },
-});
-
 // ─── DATABASE ───
-mongoose
-  .connect(MONGODB_URI)
+mongoose.connect(MONGODB_URI)
   .then(() => console.log('✅ MongoDB connected'))
-  .catch((err) => console.error('❌ MongoDB error:', err.message));
+  .catch(err => console.error('❌ MongoDB error:', err.message));
 
 // ─── MODELS ───
 const UserSchema = new mongoose.Schema({
@@ -195,13 +178,15 @@ app.get('/api/home/:id', async (req, res) => {
   }
 });
 
-app.post('/api/home', verifyToken, adminOnly, upload.single('media'), async (req, res) => {
+app.post('/api/home', verifyToken, adminOnly, async (req, res) => {
   try {
     const { type, title, icon, description } = req.body;
     if (!type || !title) return res.status(400).json({ error: 'Type and title are required' });
     let mediaUrl = '', publicId = '';
-    if (req.file) {
-      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/home', req.file.mimetype.startsWith('video/') ? 'video' : 'image');
+    if (req.files && req.files.media) {
+      const file = req.files.media;
+      const isVideo = file.mimetype.startsWith('video/');
+      const result = await uploadToCloudinary(file.data, 'fabtech/home', isVideo ? 'video' : 'image');
       mediaUrl = result.secure_url;
       publicId = result.public_id;
     }
@@ -213,15 +198,17 @@ app.post('/api/home', verifyToken, adminOnly, upload.single('media'), async (req
   }
 });
 
-app.put('/api/home/:id', verifyToken, adminOnly, upload.single('media'), async (req, res) => {
+app.put('/api/home/:id', verifyToken, adminOnly, async (req, res) => {
   try {
     const item = await Home.findById(req.params.id);
     if (!item) return res.status(404).json({ error: 'Item not found' });
     const { type, title, icon, description } = req.body;
     let mediaUrl = item.mediaUrl, publicId = item.publicId;
-    if (req.file) {
+    if (req.files && req.files.media) {
       if (item.publicId) await cloudinary.uploader.destroy(item.publicId).catch(() => {});
-      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/home', req.file.mimetype.startsWith('video/') ? 'video' : 'image');
+      const file = req.files.media;
+      const isVideo = file.mimetype.startsWith('video/');
+      const result = await uploadToCloudinary(file.data, 'fabtech/home', isVideo ? 'video' : 'image');
       mediaUrl = result.secure_url;
       publicId = result.public_id;
     }
@@ -272,12 +259,13 @@ app.get('/api/projects/:id', async (req, res) => {
   }
 });
 
-app.post('/api/projects', verifyToken, adminOnly, upload.single('media'), async (req, res) => {
+app.post('/api/projects', verifyToken, adminOnly, async (req, res) => {
   try {
     const { category, mediaType, heading, description } = req.body;
     if (!category || !mediaType || !heading) return res.status(400).json({ error: 'Category, mediaType, and heading are required' });
-    if (!req.file) return res.status(400).json({ error: 'Media file is required' });
-    const result = await uploadToCloudinary(req.file.buffer, 'fabtech/projects', mediaType === 'video' ? 'video' : 'image');
+    if (!req.files || !req.files.media) return res.status(400).json({ error: 'Media file is required' });
+    const file = req.files.media;
+    const result = await uploadToCloudinary(file.data, 'fabtech/projects', mediaType === 'video' ? 'video' : 'image');
     const project = new Project({ category, mediaType, heading, description: description || '', mediaUrl: result.secure_url, publicId: result.public_id });
     await project.save();
     res.status(201).json(project);
@@ -286,15 +274,16 @@ app.post('/api/projects', verifyToken, adminOnly, upload.single('media'), async 
   }
 });
 
-app.put('/api/projects/:id', verifyToken, adminOnly, upload.single('media'), async (req, res) => {
+app.put('/api/projects/:id', verifyToken, adminOnly, async (req, res) => {
   try {
     const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ error: 'Project not found' });
     const { category, mediaType, heading, description } = req.body;
     let mediaUrl = project.mediaUrl, publicId = project.publicId;
-    if (req.file) {
+    if (req.files && req.files.media) {
       if (project.publicId) await cloudinary.uploader.destroy(project.publicId).catch(() => {});
-      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/projects', mediaType === 'video' ? 'video' : 'image');
+      const file = req.files.media;
+      const result = await uploadToCloudinary(file.data, 'fabtech/projects', mediaType === 'video' ? 'video' : 'image');
       mediaUrl = result.secure_url;
       publicId = result.public_id;
     }
@@ -342,13 +331,14 @@ app.get('/api/team/:id', async (req, res) => {
   }
 });
 
-app.post('/api/team', verifyToken, adminOnly, upload.single('photo'), async (req, res) => {
+app.post('/api/team', verifyToken, adminOnly, async (req, res) => {
   try {
     const { name, role, bio } = req.body;
     if (!name || !role) return res.status(400).json({ error: 'Name and role are required' });
     let photoUrl = '', publicId = '';
-    if (req.file) {
-      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/team', 'image');
+    if (req.files && req.files.photo) {
+      const file = req.files.photo;
+      const result = await uploadToCloudinary(file.data, 'fabtech/team', 'image');
       photoUrl = result.secure_url;
       publicId = result.public_id;
     }
@@ -360,15 +350,16 @@ app.post('/api/team', verifyToken, adminOnly, upload.single('photo'), async (req
   }
 });
 
-app.put('/api/team/:id', verifyToken, adminOnly, upload.single('photo'), async (req, res) => {
+app.put('/api/team/:id', verifyToken, adminOnly, async (req, res) => {
   try {
     const member = await Team.findById(req.params.id);
     if (!member) return res.status(404).json({ error: 'Team member not found' });
     const { name, role, bio } = req.body;
     let photoUrl = member.photo?.url || '', publicId = member.photo?.publicId || '';
-    if (req.file) {
+    if (req.files && req.files.photo) {
       if (member.photo?.publicId) await cloudinary.uploader.destroy(member.photo.publicId).catch(() => {});
-      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/team', 'image');
+      const file = req.files.photo;
+      const result = await uploadToCloudinary(file.data, 'fabtech/team', 'image');
       photoUrl = result.secure_url;
       publicId = result.public_id;
     }
@@ -417,10 +408,11 @@ app.get('/api/settings/:key', async (req, res) => {
   }
 });
 
-app.put('/api/settings/:key', verifyToken, adminOnly, upload.single('media'), async (req, res) => {
+app.put('/api/settings/:key', verifyToken, adminOnly, async (req, res) => {
   try {
-    if (req.params.key === 'heroVideo' && req.file) {
-      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/hero', 'video');
+    if (req.params.key === 'heroVideo' && req.files && req.files.media) {
+      const file = req.files.media;
+      const result = await uploadToCloudinary(file.data, 'fabtech/hero', 'video');
       const setting = await Setting.findOneAndUpdate(
         { key: req.params.key },
         { key: req.params.key, value: result.secure_url },
@@ -452,7 +444,6 @@ app.get('/admin', (req, res) => {
 
 // ─── ERROR HANDLER ──────────────────────────────────
 app.use((err, req, res, next) => {
-  if (err instanceof multer.MulterError) return res.status(400).json({ error: err.message });
   console.error('❌', err);
   res.status(500).json({ error: err.message || 'Internal server error' });
 });
@@ -462,5 +453,4 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌐 Home: http://localhost:${PORT}/`);
   console.log(`🔐 Admin: http://localhost:${PORT}/admin`);
-  console.log(`🧪 Test: http://localhost:${PORT}/api/test`);
 });
