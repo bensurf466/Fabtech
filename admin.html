@@ -9,6 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
+        /* ============================================= */
+        /* RESET & BASE */
+        /* ============================================= */
         * {
             margin: 0;
             padding: 0;
@@ -28,8 +31,13 @@
             margin: 0 auto;
             padding: 0 20px;
         }
+        .hidden {
+            display: none !important;
+        }
 
-        /* Login Screen */
+        /* ============================================= */
+        /* LOGIN SCREEN */
+        /* ============================================= */
         #loginScreen {
             display: flex;
             align-items: center;
@@ -62,7 +70,7 @@
         }
         .login-card .input-group input {
             width: 100%;
-            padding: 12px 40px 12px 16px;
+            padding: 12px 45px 12px 16px;
             border: 1px solid #ddd;
             border-radius: 6px;
             font-family: 'Inter', sans-serif;
@@ -84,11 +92,12 @@
             cursor: pointer;
             font-size: 1.1rem;
             padding: 4px;
+            z-index: 2;
         }
         .login-card .input-group .toggle-password:hover {
             color: #1a1a1a;
         }
-        .login-card button {
+        .login-card button[type="button"] {
             width: 100%;
             padding: 14px;
             background: #1a1a1a;
@@ -101,7 +110,7 @@
             cursor: pointer;
             transition: 0.3s;
         }
-        .login-card button:hover {
+        .login-card button[type="button"]:hover {
             background: #333;
         }
         .login-card .error {
@@ -123,7 +132,9 @@
             text-decoration: underline;
         }
 
-        /* Admin Dashboard */
+        /* ============================================= */
+        /* ADMIN DASHBOARD */
+        /* ============================================= */
         #adminApp {
             display: none;
         }
@@ -149,6 +160,7 @@
             display: flex;
             align-items: center;
             gap: 1.5rem;
+            flex-wrap: wrap;
         }
         .admin-header .user-info span {
             font-size: 0.9rem;
@@ -223,7 +235,7 @@
         /* Stats Cards */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 1.5rem;
             margin-bottom: 2rem;
         }
@@ -233,6 +245,7 @@
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.04);
             border: 1px solid #eee;
+            text-align: center;
         }
         .stat-card .number {
             font-family: 'Bebas Neue', sans-serif;
@@ -244,7 +257,7 @@
             font-size: 0.9rem;
         }
 
-        /* Tables / Lists */
+        /* Lists */
         .list-header {
             display: flex;
             justify-content: space-between;
@@ -263,6 +276,7 @@
             font-weight: 600;
             cursor: pointer;
             transition: 0.3s;
+            font-size: 0.9rem;
         }
         .btn-primary:hover {
             background: #333;
@@ -323,6 +337,7 @@
         .item-card .actions {
             display: flex;
             gap: 0.5rem;
+            flex-wrap: wrap;
         }
 
         /* Modal */
@@ -423,7 +438,7 @@
             background: #333;
         }
 
-        /* Welcome Toast for non-admin users */
+        /* Welcome Toast */
         .welcome-toast {
             position: fixed;
             top: 90px;
@@ -463,7 +478,6 @@
             }
             .admin-header .user-info {
                 justify-content: center;
-                flex-wrap: wrap;
             }
             .tabs {
                 top: 120px;
@@ -496,9 +510,9 @@
 </head>
 <body>
 
-    <!-- ========================================= -->
+    <!-- ============================================= -->
     <!-- LOGIN SCREEN -->
-    <!-- ========================================= -->
+    <!-- ============================================= -->
     <div id="loginScreen">
         <div class="login-card">
             <h1>FABTECH</h1>
@@ -509,9 +523,8 @@
                 </div>
                 <div class="input-group">
                     <input type="password" id="loginPassword" placeholder="Password" required>
-                    <button class="toggle-password" onclick="togglePasswordVisibility('loginPassword', this)"><i class="fas fa-eye"></i></button>
                 </div>
-                <button onclick="handleLogin()">Sign In</button>
+                <button type="button" onclick="handleLogin()">Sign In</button>
                 <div id="loginError" class="error"></div>
                 <div class="toggle-link">
                     Don't have an account? <a onclick="showRegister()">Create one</a>
@@ -535,7 +548,7 @@
                     <input type="password" id="regConfirmPassword" placeholder="Repeat Password" required>
                     <button class="toggle-password" onclick="togglePasswordVisibility('regConfirmPassword', this)"><i class="fas fa-eye"></i></button>
                 </div>
-                <button onclick="handleRegister()">Create Account</button>
+                <button type="button" onclick="handleRegister()">Create Account</button>
                 <div id="regError" class="error"></div>
                 <div class="toggle-link">
                     Already have an account? <a onclick="showLogin()">Sign In</a>
@@ -544,9 +557,9 @@
         </div>
     </div>
 
-    <!-- ========================================= -->
+    <!-- ============================================= -->
     <!-- ADMIN DASHBOARD -->
-    <!-- ========================================= -->
+    <!-- ============================================= -->
     <div id="adminApp">
         <!-- Header -->
         <div class="admin-header">
@@ -561,20 +574,20 @@
         <!-- Tabs -->
         <div class="tabs">
             <button class="tab-btn active" data-tab="dashboard"><i class="fas fa-chart-pie"></i> Dashboard</button>
-            <button class="tab-btn" data-tab="exhibitions"><i class="fas fa-calendar"></i> Exhibitions</button>
+            <button class="tab-btn" data-tab="home"><i class="fas fa-home"></i> Home Page</button>
             <button class="tab-btn" data-tab="projects"><i class="fas fa-images"></i> Projects</button>
             <button class="tab-btn" data-tab="team"><i class="fas fa-users"></i> Team</button>
             <button class="tab-btn" data-tab="settings"><i class="fas fa-cog"></i> Settings</button>
         </div>
 
-        <!-- ===== DASHBOARD TAB ===== -->
+        <!-- ===== DASHBOARD ===== -->
         <div class="tab-content active" id="tab-dashboard">
             <div class="container">
                 <h2>Dashboard</h2>
                 <div class="stats-grid" id="statsGrid">
                     <div class="stat-card">
-                        <div class="number" id="statExhibitions">0</div>
-                        <div class="label">Exhibitions</div>
+                        <div class="number" id="statHome">0</div>
+                        <div class="label">Home Items</div>
                     </div>
                     <div class="stat-card">
                         <div class="number" id="statProjects">0</div>
@@ -593,18 +606,18 @@
             </div>
         </div>
 
-        <!-- ===== EXHIBITIONS TAB ===== -->
-        <div class="tab-content" id="tab-exhibitions">
+        <!-- ===== HOME PAGE ===== -->
+        <div class="tab-content" id="tab-home">
             <div class="container">
                 <div class="list-header">
-                    <h2>Exhibitions</h2>
-                    <button class="btn-primary" onclick="openExhibitionModal()"><i class="fas fa-plus"></i> Add Exhibition</button>
+                    <h2>Home Page Content</h2>
+                    <button class="btn-primary" onclick="openHomeModal()"><i class="fas fa-plus"></i> Add Home Item</button>
                 </div>
-                <div id="exhibitionsList"></div>
+                <div id="homeList"></div>
             </div>
         </div>
 
-        <!-- ===== PROJECTS TAB ===== -->
+        <!-- ===== PROJECTS ===== -->
         <div class="tab-content" id="tab-projects">
             <div class="container">
                 <div class="list-header">
@@ -615,7 +628,7 @@
             </div>
         </div>
 
-        <!-- ===== TEAM TAB ===== -->
+        <!-- ===== TEAM ===== -->
         <div class="tab-content" id="tab-team">
             <div class="container">
                 <div class="list-header">
@@ -626,14 +639,20 @@
             </div>
         </div>
 
-        <!-- ===== SETTINGS TAB ===== -->
+        <!-- ===== SETTINGS ===== -->
         <div class="tab-content" id="tab-settings">
             <div class="container">
                 <h2>Site Settings</h2>
                 <div style="max-width:600px; margin-top:1rem;">
-                    <label style="font-weight:600;">Hero Video URL (Homepage)</label>
-                    <input type="text" id="settingHeroVideo" placeholder="https://... or Cloudinary video URL" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; margin-bottom:1rem;">
-                    <label style="font-weight:600;">Site Title</label>
+                    <label style="font-weight:600;">Hero Video</label>
+                    <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+                        <input type="file" id="heroVideoFile" accept="video/*" style="flex:1; padding:10px; border:1px solid #ddd; border-radius:6px;">
+                        <button class="btn-primary" onclick="uploadHeroVideo()">Upload Video</button>
+                    </div>
+                    <div id="heroVideoPreview" style="margin-top:0.5rem;"></div>
+                    <input type="hidden" id="settingHeroVideo">
+
+                    <label style="font-weight:600; margin-top:1rem;">Site Title</label>
                     <input type="text" id="settingSiteTitle" placeholder="FABTECH EXHIBITIONS" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; margin-bottom:1rem;">
                     <button class="btn-primary" onclick="saveSettings()">Save Settings</button>
                     <div id="settingsStatus" style="margin-top:1rem; color:#2ecc71;"></div>
@@ -642,9 +661,9 @@
         </div>
     </div>
 
-    <!-- ========================================= -->
-    <!-- MODAL (Reusable) -->
-    <!-- ========================================= -->
+    <!-- ============================================= -->
+    <!-- MODAL -->
+    <!-- ============================================= -->
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal">
             <button class="close-modal" onclick="closeModal()">&times;</button>
@@ -652,21 +671,27 @@
         </div>
     </div>
 
+    <!-- ============================================= -->
+    <!-- CLOUDINARY UPLOAD WIDGET -->
+    <!-- ============================================= -->
+    <script src="https://upload-widget.cloudinary.com/global/all.js" type="text/javascript"></script>
+
     <script>
         // =============================================
-        // CONFIGURATION - UPDATE THIS WITH YOUR RAILWAY URL
+        // CONFIGURATION
         // =============================================
         const API_BASE = 'https://fabtech-production.up.railway.app';
+        const CLOUDINARY_CLOUD_NAME = 'o3wq4srt';
+        const CLOUDINARY_UPLOAD_PRESET = 'fabtech_uploads'; // Create this in Cloudinary
 
         // =============================================
         // GLOBAL STATE
         // =============================================
         let token = localStorage.getItem('fabtech_token');
         let currentUser = null;
-        let currentModalType = '';
 
         // =============================================
-        // TOGGLE PASSWORD VISIBILITY
+        // TOGGLE PASSWORD VISIBILITY (register only)
         // =============================================
         function togglePasswordVisibility(inputId, button) {
             const input = document.getElementById(inputId);
@@ -677,7 +702,7 @@
         }
 
         // =============================================
-        // AUTH: Login / Register / Logout
+        // AUTH
         // =============================================
         function showRegister() {
             document.getElementById('loginForm').style.display = 'none';
@@ -736,7 +761,6 @@
                 errorEl.textContent = 'Please fill in all fields.';
                 return;
             }
-
             if (password !== confirm) {
                 errorEl.textContent = 'Passwords do not match.';
                 return;
@@ -770,12 +794,56 @@
             currentUser = null;
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('adminApp').style.display = 'none';
-            // Redirect to home page
             window.location.href = 'https://your-netlify-url.netlify.app/';
         }
 
         // =============================================
-        // SHOW WELCOME TOAST (For non-admin users)
+        // CLOUDINARY UPLOAD WIDGET
+        // =============================================
+        function openCloudinaryUpload(fieldId, previewId, isVideo = false) {
+            const myWidget = cloudinary.createUploadWidget(
+                {
+                    cloudName: CLOUDINARY_CLOUD_NAME,
+                    uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+                    sources: ['local', 'url', 'camera'],
+                    multiple: false,
+                    maxFiles: 1,
+                    resourceType: isVideo ? 'video' : 'image',
+                    folder: 'fabtech_uploads',
+                    clientAllowedFormats: isVideo ? ['mp4', 'webm', 'mov', 'avi'] : ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+                },
+                (error, result) => {
+                    if (!error && result && result.event === 'success') {
+                        const url = result.info.secure_url;
+                        const publicId = result.info.public_id;
+
+                        document.getElementById(fieldId).value = url;
+                        const preview = document.getElementById(previewId);
+                        if (preview) {
+                            if (isVideo) {
+                                preview.innerHTML = `
+                                    <video src="${url}" style="max-width:200px; max-height:200px; border-radius:6px; margin-top:0.5rem;" controls></video>
+                                    <p style="font-size:0.8rem; color:#888; margin-top:0.2rem;">${publicId}</p>
+                                `;
+                            } else {
+                                preview.innerHTML = `
+                                    <img src="${url}" style="max-width:200px; max-height:200px; border-radius:6px; margin-top:0.5rem;">
+                                    <p style="font-size:0.8rem; color:#888; margin-top:0.2rem;">${publicId}</p>
+                                `;
+                            }
+                        }
+                        const publicIdField = document.getElementById(fieldId + '_publicId');
+                        if (publicIdField) {
+                            publicIdField.value = publicId;
+                        }
+                    }
+                }
+            );
+            myWidget.open();
+        }
+
+        // =============================================
+        // WELCOME TOAST (non-admin users)
         // =============================================
         function showWelcomeToast(name) {
             const toast = document.createElement('div');
@@ -785,8 +853,6 @@
                 <button class="close-toast" onclick="this.parentElement.remove(); window.location.href='https://your-netlify-url.netlify.app/';">&times;</button>
             `;
             document.body.appendChild(toast);
-
-            // Auto-remove after 5 seconds and redirect to home
             setTimeout(() => {
                 if (toast.parentElement) {
                     toast.remove();
@@ -809,7 +875,6 @@
                 currentUser = user;
                 localStorage.setItem('fabtech_user', JSON.stringify(user));
 
-                // Check role - if not admin, show welcome and redirect
                 if (user.role !== 'admin') {
                     document.getElementById('loginScreen').style.display = 'none';
                     document.getElementById('adminApp').style.display = 'none';
@@ -817,19 +882,17 @@
                     return;
                 }
 
-                // Admin user - show admin panel
                 document.getElementById('loginScreen').style.display = 'none';
                 document.getElementById('adminApp').style.display = 'block';
                 document.getElementById('adminName').textContent = user.name;
                 document.getElementById('adminRole').textContent = user.role;
 
                 loadDashboard();
-                loadExhibitions();
+                loadHomeItems();
                 loadProjects();
                 loadTeam();
                 loadSettings();
 
-                // Setup tabs
                 document.querySelectorAll('.tab-btn').forEach(btn => {
                     btn.addEventListener('click', function() {
                         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -851,13 +914,13 @@
         async function loadDashboard() {
             try {
                 const headers = { 'Authorization': `Bearer ${token}` };
-                const [exhibitions, projects, team, users] = await Promise.all([
-                    fetch(`${API_BASE}/api/exhibitions`).then(r => r.json()),
+                const [home, projects, team, users] = await Promise.all([
+                    fetch(`${API_BASE}/api/home`).then(r => r.json()),
                     fetch(`${API_BASE}/api/projects`).then(r => r.json()),
                     fetch(`${API_BASE}/api/team`).then(r => r.json()),
                     fetch(`${API_BASE}/api/auth/me`, { headers }).then(r => r.json()),
                 ]);
-                document.getElementById('statExhibitions').textContent = Array.isArray(exhibitions) ? exhibitions.length : 0;
+                document.getElementById('statHome').textContent = Array.isArray(home) ? home.length : 0;
                 document.getElementById('statProjects').textContent = Array.isArray(projects) ? projects.length : 0;
                 document.getElementById('statTeam').textContent = Array.isArray(team) ? team.length : 0;
                 document.getElementById('statUsers').textContent = users ? 1 : 0;
@@ -867,102 +930,131 @@
         }
 
         // =============================================
-        // EXHIBITIONS CRUD
+        // HOME PAGE CRUD
         // =============================================
-        async function loadExhibitions() {
+        async function loadHomeItems() {
             try {
-                const res = await fetch(`${API_BASE}/api/exhibitions`);
+                const res = await fetch(`${API_BASE}/api/home`);
                 const data = await res.json();
-                const container = document.getElementById('exhibitionsList');
+                const container = document.getElementById('homeList');
                 if (!Array.isArray(data) || data.length === 0) {
-                    container.innerHTML = '<p style="color:#888;">No exhibitions added yet.</p>';
+                    container.innerHTML = '<p style="color:#888;">No home content added yet.</p>';
                     return;
                 }
-                container.innerHTML = data.map(ex => `
+                container.innerHTML = data.map(item => `
                     <div class="item-card">
                         <div class="info">
-                            <div class="title">${ex.title}</div>
-                            <div class="meta">${ex.status} • ${ex.location} • ${new Date(ex.startDate).toLocaleDateString()}</div>
+                            <div class="title">${item.title || 'Untitled'}</div>
+                            <div class="meta">${item.type || 'category'} ${item.status ? '• ' + item.status : ''}</div>
+                            ${item.mediaUrl ? `<div class="meta">📎 <a href="${item.mediaUrl}" target="_blank">View Media</a></div>` : ''}
                         </div>
                         <div class="actions">
-                            <button class="btn-edit" onclick="openExhibitionModal('${ex._id}')"><i class="fas fa-edit"></i> Edit</button>
-                            <button class="btn-danger" onclick="deleteExhibition('${ex._id}')"><i class="fas fa-trash"></i> Delete</button>
+                            <button class="btn-edit" onclick="openHomeModal('${item._id}')"><i class="fas fa-edit"></i> Edit</button>
+                            <button class="btn-danger" onclick="deleteHomeItem('${item._id}')"><i class="fas fa-trash"></i> Delete</button>
                         </div>
                     </div>
                 `).join('');
             } catch (err) {
-                console.error('Load exhibitions error:', err);
+                console.error('Load home error:', err);
             }
         }
 
-        function openExhibitionModal(id = null) {
-            currentModalType = 'exhibition';
+        function openHomeModal(id = null) {
+            currentModalType = 'home';
             const modal = document.getElementById('modalContent');
             if (id) {
-                fetch(`${API_BASE}/api/exhibitions/${id}`)
+                fetch(`${API_BASE}/api/home/${id}`)
                     .then(r => r.json())
-                    .then(ex => {
-                        modal.innerHTML = buildExhibitionForm(ex);
+                    .then(item => {
+                        modal.innerHTML = buildHomeForm(item);
                         document.getElementById('modalOverlay').classList.add('active');
                     });
             } else {
-                modal.innerHTML = buildExhibitionForm(null);
+                modal.innerHTML = buildHomeForm(null);
                 document.getElementById('modalOverlay').classList.add('active');
             }
         }
 
-        function buildExhibitionForm(data) {
+        function buildHomeForm(data) {
             const d = data || {};
             return `
-                <h2>${d._id ? 'Edit' : 'Add'} Exhibition</h2>
-                <input type="hidden" id="exId" value="${d._id || ''}">
-                <label>Title</label>
-                <input type="text" id="exTitle" value="${d.title || ''}" required>
-                <label>Slug (URL-friendly name)</label>
-                <input type="text" id="exSlug" value="${d.slug || ''}" placeholder="exhibition-name" required>
-                <label>Description</label>
-                <textarea id="exDescription" required>${d.description || ''}</textarea>
+                <h2>${d._id ? 'Edit' : 'Add'} Home Item</h2>
+                <input type="hidden" id="homeId" value="${d._id || ''}">
+                <label>Type</label>
+                <select id="homeType" onchange="toggleHomeFields()">
+                    <option value="category" ${d.type === 'category' ? 'selected' : ''}>Category (Type of Events)</option>
+                    <option value="video" ${d.type === 'video' ? 'selected' : ''}>Video (Showcase)</option>
+                </select>
+                <label>Title / Heading (required)</label>
+                <input type="text" id="homeTitle" value="${d.title || ''}" required>
+
+                <div id="homeCategoryFields" style="${d.type === 'video' ? 'display:none;' : ''}">
+                    <label>Icon (emoji or text)</label>
+                    <input type="text" id="homeIcon" value="${d.icon || '🏛️'}" placeholder="🏛️">
+                </div>
+
+                <div id="homeVideoFields" style="${d.type === 'category' ? 'display:none;' : ''}">
+                    <label>Description (optional)</label>
+                    <input type="text" id="homeDescription" value="${d.description || ''}" placeholder="Brief description">
+                </div>
+
+                <label>Upload Media</label>
+                <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap; margin-bottom:0.5rem;">
+                    <button type="button" class="btn-primary" onclick="openCloudinaryUpload('homeMediaUrl', 'homeMediaPreview', document.getElementById('homeType').value === 'video')">
+                        <i class="fas fa-upload"></i> Upload ${d.type === 'video' ? 'Video' : 'Image'}
+                    </button>
+                </div>
+                <div id="homeMediaPreview">
+                    ${d.mediaUrl ? (d.type === 'video' ? `<video src="${d.mediaUrl}" style="max-width:200px; max-height:200px; border-radius:6px; margin-top:0.5rem;" controls></video>` : `<img src="${d.mediaUrl}" style="max-width:200px; max-height:200px; border-radius:6px; margin-top:0.5rem;">`) : ''}
+                </div>
+                <input type="hidden" id="homeMediaUrl" value="${d.mediaUrl || ''}">
+                <input type="hidden" id="homeMediaPublicId" value="${d.publicId || ''}">
+
                 <div class="form-row">
                     <div>
                         <label>Start Date</label>
-                        <input type="date" id="exStart" value="${d.startDate ? new Date(d.startDate).toISOString().split('T')[0] : ''}" required>
+                        <input type="date" id="homeStart" value="${d.startDate ? new Date(d.startDate).toISOString().split('T')[0] : ''}">
                     </div>
                     <div>
                         <label>End Date</label>
-                        <input type="date" id="exEnd" value="${d.endDate ? new Date(d.endDate).toISOString().split('T')[0] : ''}" required>
+                        <input type="date" id="homeEnd" value="${d.endDate ? new Date(d.endDate).toISOString().split('T')[0] : ''}">
                     </div>
                 </div>
                 <label>Location</label>
-                <input type="text" id="exLocation" value="${d.location || ''}" required>
+                <input type="text" id="homeLocation" value="${d.location || ''}">
                 <label>Status</label>
-                <select id="exStatus">
+                <select id="homeStatus">
                     <option value="upcoming" ${d.status === 'upcoming' ? 'selected' : ''}>Upcoming</option>
                     <option value="ongoing" ${d.status === 'ongoing' ? 'selected' : ''}>Ongoing</option>
                     <option value="past" ${d.status === 'past' ? 'selected' : ''}>Past</option>
                 </select>
-                <label>Featured Image URL (Cloudinary)</label>
-                <input type="text" id="exFeatured" value="${d.featuredImage?.url || ''}" placeholder="https://res.cloudinary.com/...">
-                <label>Gallery Images (comma-separated URLs)</label>
-                <input type="text" id="exGallery" value="${(d.galleryImages || []).map(img => img.url).join(', ')}" placeholder="url1, url2, url3">
-                <button class="submit-btn" onclick="saveExhibition()">${d._id ? 'Update' : 'Create'} Exhibition</button>
+
+                <button class="submit-btn" onclick="saveHomeItem()">${d._id ? 'Update' : 'Create'} Home Item</button>
             `;
         }
 
-        async function saveExhibition() {
-            const id = document.getElementById('exId').value;
+        function toggleHomeFields() {
+            const type = document.getElementById('homeType').value;
+            document.getElementById('homeCategoryFields').style.display = type === 'video' ? 'none' : 'block';
+            document.getElementById('homeVideoFields').style.display = type === 'category' ? 'none' : 'block';
+        }
+
+        async function saveHomeItem() {
+            const id = document.getElementById('homeId').value;
             const data = {
-                title: document.getElementById('exTitle').value,
-                slug: document.getElementById('exSlug').value,
-                description: document.getElementById('exDescription').value,
-                startDate: document.getElementById('exStart').value,
-                endDate: document.getElementById('exEnd').value,
-                location: document.getElementById('exLocation').value,
-                status: document.getElementById('exStatus').value,
-                featuredImage: { url: document.getElementById('exFeatured').value || '' },
-                galleryImages: document.getElementById('exGallery').value.split(',').filter(s => s.trim()).map(url => ({ url: url.trim() })),
+                type: document.getElementById('homeType').value,
+                title: document.getElementById('homeTitle').value,
+                icon: document.getElementById('homeIcon')?.value || '',
+                description: document.getElementById('homeDescription')?.value || '',
+                mediaUrl: document.getElementById('homeMediaUrl').value,
+                publicId: document.getElementById('homeMediaPublicId').value,
+                startDate: document.getElementById('homeStart').value || null,
+                endDate: document.getElementById('homeEnd').value || null,
+                location: document.getElementById('homeLocation').value || '',
+                status: document.getElementById('homeStatus').value || '',
             };
             try {
-                const url = id ? `${API_BASE}/api/exhibitions/${id}` : `${API_BASE}/api/exhibitions`;
+                const url = id ? `${API_BASE}/api/home/${id}` : `${API_BASE}/api/home`;
                 const method = id ? 'PUT' : 'POST';
                 const res = await fetch(url, {
                     method,
@@ -971,22 +1063,22 @@
                 });
                 if (!res.ok) throw new Error('Failed to save');
                 closeModal();
-                loadExhibitions();
+                loadHomeItems();
                 loadDashboard();
             } catch (err) {
-                alert('Error saving exhibition: ' + err.message);
+                alert('Error saving: ' + err.message);
             }
         }
 
-        async function deleteExhibition(id) {
-            if (!confirm('Delete this exhibition?')) return;
+        async function deleteHomeItem(id) {
+            if (!confirm('Delete this item? This will also delete the media from Cloudinary.')) return;
             try {
-                const res = await fetch(`${API_BASE}/api/exhibitions/${id}`, {
+                const res = await fetch(`${API_BASE}/api/home/${id}`, {
                     method: 'DELETE',
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
                 if (!res.ok) throw new Error('Delete failed');
-                loadExhibitions();
+                loadHomeItems();
                 loadDashboard();
             } catch (err) {
                 alert('Error deleting: ' + err.message);
@@ -1010,6 +1102,7 @@
                         <div class="info">
                             <div class="title">${p.heading}</div>
                             <div class="meta">${p.category} • ${p.mediaType} ${p.description ? '• ' + p.description : ''}</div>
+                            ${p.mediaUrl ? `<div class="meta">📎 <a href="${p.mediaUrl}" target="_blank">View Media</a></div>` : ''}
                         </div>
                         <div class="actions">
                             <button class="btn-edit" onclick="openProjectModal('${p._id}')"><i class="fas fa-edit"></i> Edit</button>
@@ -1049,7 +1142,7 @@
                     ${categories.map(c => `<option value="${c}" ${d.category === c ? 'selected' : ''}>${c}</option>`).join('')}
                 </select>
                 <label>Media Type</label>
-                <select id="projMediaType">
+                <select id="projMediaType" onchange="updateProjectUploadType()">
                     <option value="photo" ${d.mediaType === 'photo' ? 'selected' : ''}>Photo</option>
                     <option value="video" ${d.mediaType === 'video' ? 'selected' : ''}>Video</option>
                 </select>
@@ -1057,12 +1150,26 @@
                 <input type="text" id="projHeading" value="${d.heading || ''}" required>
                 <label>Description (optional)</label>
                 <input type="text" id="projDescription" value="${d.description || ''}">
-                <label>Media URL (Cloudinary)</label>
-                <input type="text" id="projMediaUrl" value="${d.mediaUrl || ''}" placeholder="https://res.cloudinary.com/..." required>
-                <label>Public ID (for deletion)</label>
-                <input type="text" id="projPublicId" value="${d.publicId || ''}" placeholder="folder/filename">
+
+                <label>Upload Media</label>
+                <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap; margin-bottom:0.5rem;">
+                    <button type="button" class="btn-primary" onclick="openCloudinaryUpload('projMediaUrl', 'projMediaPreview', document.getElementById('projMediaType').value === 'video')">
+                        <i class="fas fa-upload"></i> Upload ${d.mediaType === 'video' ? 'Video' : 'Photo'}
+                    </button>
+                </div>
+                <div id="projMediaPreview">
+                    ${d.mediaUrl ? (d.mediaType === 'video' ? `<video src="${d.mediaUrl}" style="max-width:200px; max-height:200px; border-radius:6px; margin-top:0.5rem;" controls></video>` : `<img src="${d.mediaUrl}" style="max-width:200px; max-height:200px; border-radius:6px; margin-top:0.5rem;">`) : ''}
+                </div>
+                <input type="hidden" id="projMediaUrl" value="${d.mediaUrl || ''}">
+                <input type="hidden" id="projPublicId" value="${d.publicId || ''}">
+
                 <button class="submit-btn" onclick="saveProject()">${d._id ? 'Update' : 'Create'} Project</button>
             `;
+        }
+
+        function updateProjectUploadType() {
+            const preview = document.getElementById('projMediaPreview');
+            preview.innerHTML = ''; // clear preview on type change
         }
 
         async function saveProject() {
@@ -1093,7 +1200,7 @@
         }
 
         async function deleteProject(id) {
-            if (!confirm('Delete this project?')) return;
+            if (!confirm('Delete this project? This will also delete the media from Cloudinary.')) return;
             try {
                 const res = await fetch(`${API_BASE}/api/projects/${id}`, {
                     method: 'DELETE',
@@ -1108,7 +1215,7 @@
         }
 
         // =============================================
-        // TEAM CRUD
+        // TEAM CRUD (NO ORDER FIELD)
         // =============================================
         async function loadTeam() {
             try {
@@ -1124,6 +1231,7 @@
                         <div class="info">
                             <div class="title">${m.name}</div>
                             <div class="meta">${m.role} ${m.bio ? '• ' + m.bio : ''}</div>
+                            ${m.photo?.url ? `<div class="meta">📎 <a href="${m.photo.url}" target="_blank">View Photo</a></div>` : ''}
                         </div>
                         <div class="actions">
                             <button class="btn-edit" onclick="openTeamModal('${m._id}')"><i class="fas fa-edit"></i> Edit</button>
@@ -1163,10 +1271,19 @@
                 <input type="text" id="teamRole" value="${d.role || ''}" required>
                 <label>Bio (optional)</label>
                 <textarea id="teamBio">${d.bio || ''}</textarea>
-                <label>Photo URL (Cloudinary)</label>
-                <input type="text" id="teamPhoto" value="${d.photo?.url || ''}" placeholder="https://res.cloudinary.com/...">
-                <label>Order (lower = higher priority)</label>
-                <input type="number" id="teamOrder" value="${d.order || 0}">
+
+                <label>Upload Photo</label>
+                <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap; margin-bottom:0.5rem;">
+                    <button type="button" class="btn-primary" onclick="openCloudinaryUpload('teamPhotoUrl', 'teamPhotoPreview', false)">
+                        <i class="fas fa-upload"></i> Upload Photo
+                    </button>
+                </div>
+                <div id="teamPhotoPreview">
+                    ${d.photo?.url ? `<img src="${d.photo.url}" style="max-width:200px; max-height:200px; border-radius:6px; margin-top:0.5rem;">` : ''}
+                </div>
+                <input type="hidden" id="teamPhotoUrl" value="${d.photo?.url || ''}">
+                <input type="hidden" id="teamPhotoPublicId" value="${d.photo?.publicId || ''}">
+
                 <button class="submit-btn" onclick="saveTeam()">${d._id ? 'Update' : 'Create'} Team Member</button>
             `;
         }
@@ -1177,8 +1294,10 @@
                 name: document.getElementById('teamName').value,
                 role: document.getElementById('teamRole').value,
                 bio: document.getElementById('teamBio').value,
-                photo: { url: document.getElementById('teamPhoto').value || '' },
-                order: parseInt(document.getElementById('teamOrder').value) || 0,
+                photo: {
+                    url: document.getElementById('teamPhotoUrl').value || '',
+                    publicId: document.getElementById('teamPhotoPublicId').value || '',
+                },
             };
             try {
                 const url = id ? `${API_BASE}/api/team/${id}` : `${API_BASE}/api/team`;
@@ -1198,7 +1317,7 @@
         }
 
         async function deleteTeam(id) {
-            if (!confirm('Delete this team member?')) return;
+            if (!confirm('Delete this team member? This will also delete the photo from Cloudinary.')) return;
             try {
                 const res = await fetch(`${API_BASE}/api/team/${id}`, {
                     method: 'DELETE',
@@ -1221,9 +1340,25 @@
                 const data = await res.json();
                 document.getElementById('settingHeroVideo').value = data.heroVideo || '';
                 document.getElementById('settingSiteTitle').value = data.siteTitle || 'FABTECH EXHIBITIONS';
+                if (data.heroVideo) {
+                    document.getElementById('heroVideoPreview').innerHTML = `
+                        <video src="${data.heroVideo}" style="max-width:200px; max-height:200px; border-radius:6px; margin-top:0.5rem;" controls></video>
+                    `;
+                }
             } catch (err) {
                 console.error('Load settings error:', err);
             }
+        }
+
+        function uploadHeroVideo() {
+            const fileInput = document.getElementById('heroVideoFile');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Please select a video file first.');
+                return;
+            }
+            openCloudinaryUpload('settingHeroVideo', 'heroVideoPreview', true);
+            fileInput.value = '';
         }
 
         async function saveSettings() {
@@ -1254,7 +1389,6 @@
             document.getElementById('modalContent').innerHTML = '';
         }
 
-        // Close modal on overlay click
         document.getElementById('modalOverlay').addEventListener('click', function(e) {
             if (e.target === this) closeModal();
         });

@@ -31,7 +31,7 @@ cloudinary.config({
 });
 
 // =====================================================
-// 3. MONGODB MODELS (All in one file)
+// 3. MONGODB MODELS
 // =====================================================
 
 // --- AdminUser Model ---
@@ -57,24 +57,23 @@ AdminUserSchema.methods.comparePassword = async function(password) {
 
 const AdminUser = mongoose.model('AdminUser', AdminUserSchema);
 
-// --- Exhibition Model ---
-const ExhibitionSchema = new mongoose.Schema({
+// --- Home Page Model (replaces Exhibitions) ---
+const HomeSchema = new mongoose.Schema({
+  type: { type: String, enum: ['category', 'video'], required: true },
   title: { type: String, required: true },
-  slug: { type: String, required: true, unique: true },
-  description: { type: String, required: true },
-  startDate: { type: Date, required: true },
-  endDate: { type: Date, required: true },
-  location: { type: String, required: true },
+  icon: { type: String, default: '' },
+  description: { type: String, default: '' },
+  mediaUrl: { type: String, default: '' },
+  publicId: { type: String, default: '' },
+  startDate: { type: Date },
+  endDate: { type: Date },
+  location: { type: String, default: '' },
   status: { type: String, enum: ['upcoming', 'ongoing', 'past'], default: 'upcoming' },
-  featuredImage: { publicId: String, url: String },
-  galleryImages: [{ publicId: String, url: String }],
-  videos: [{ publicId: String, url: String, title: String }],
-  customSections: [{ type: { type: String, enum: ['text', 'image', 'video'] }, content: String }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
 
-const Exhibition = mongoose.model('Exhibition', ExhibitionSchema);
+const Home = mongoose.model('Home', HomeSchema);
 
 // --- Project Model ---
 const ProjectSchema = new mongoose.Schema({
@@ -100,7 +99,6 @@ const TeamMemberSchema = new mongoose.Schema({
   role: { type: String, required: true },
   bio: { type: String, default: '' },
   photo: { publicId: String, url: String },
-  order: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
@@ -117,7 +115,7 @@ const SettingSchema = new mongoose.Schema({
 const Setting = mongoose.model('Setting', SettingSchema);
 
 // =====================================================
-// 4. MIDDLEWARE (Auth & Admin Only)
+// 4. MIDDLEWARE
 // =====================================================
 const auth = (req, res, next) => {
   const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -203,56 +201,60 @@ app.get('/api/auth/me', auth, async (req, res) => {
 });
 
 // =====================================================
-// 6. EXHIBITION ROUTES
+// 6. HOME ROUTES (replaces exhibitions)
 // =====================================================
-app.get('/api/exhibitions', async (req, res) => {
+app.get('/api/home', async (req, res) => {
   try {
-    const exhibitions = await Exhibition.find().sort({ createdAt: -1 });
-    res.json(exhibitions);
+    const homeItems = await Home.find().sort({ createdAt: -1 });
+    res.json(homeItems);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.get('/api/exhibitions/:slug', async (req, res) => {
+app.get('/api/home/:id', async (req, res) => {
   try {
-    const exhibition = await Exhibition.findOne({ slug: req.params.slug });
-    if (!exhibition) return res.status(404).json({ error: 'Exhibition not found.' });
-    res.json(exhibition);
+    const item = await Home.findById(req.params.id);
+    if (!item) return res.status(404).json({ error: 'Item not found.' });
+    res.json(item);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.post('/api/exhibitions', auth, adminOnly, async (req, res) => {
+app.post('/api/home', auth, adminOnly, async (req, res) => {
   try {
-    const exhibition = new Exhibition(req.body);
-    await exhibition.save();
-    res.status(201).json(exhibition);
+    const homeItem = new Home(req.body);
+    await homeItem.save();
+    res.status(201).json(homeItem);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.put('/api/exhibitions/:id', auth, adminOnly, async (req, res) => {
+app.put('/api/home/:id', auth, adminOnly, async (req, res) => {
   try {
-    const exhibition = await Exhibition.findByIdAndUpdate(
+    const homeItem = await Home.findByIdAndUpdate(
       req.params.id,
       { ...req.body, updatedAt: Date.now() },
       { new: true, runValidators: true }
     );
-    if (!exhibition) return res.status(404).json({ error: 'Exhibition not found.' });
-    res.json(exhibition);
+    if (!homeItem) return res.status(404).json({ error: 'Item not found.' });
+    res.json(homeItem);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.delete('/api/exhibitions/:id', auth, adminOnly, async (req, res) => {
+app.delete('/api/home/:id', auth, adminOnly, async (req, res) => {
   try {
-    const exhibition = await Exhibition.findByIdAndDelete(req.params.id);
-    if (!exhibition) return res.status(404).json({ error: 'Exhibition not found.' });
-    res.json({ message: 'Exhibition deleted successfully.' });
+    const homeItem = await Home.findByIdAndDelete(req.params.id);
+    if (!homeItem) return res.status(404).json({ error: 'Item not found.' });
+    // Delete from Cloudinary if publicId exists
+    if (homeItem.publicId) {
+      await cloudinary.uploader.destroy(homeItem.publicId);
+    }
+    res.json({ message: 'Home item deleted successfully.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -312,6 +314,9 @@ app.delete('/api/projects/:id', auth, adminOnly, async (req, res) => {
   try {
     const project = await Project.findByIdAndDelete(req.params.id);
     if (!project) return res.status(404).json({ error: 'Project not found.' });
+    if (project.publicId) {
+      await cloudinary.uploader.destroy(project.publicId);
+    }
     res.json({ message: 'Project deleted successfully.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -323,7 +328,7 @@ app.delete('/api/projects/:id', auth, adminOnly, async (req, res) => {
 // =====================================================
 app.get('/api/team', async (req, res) => {
   try {
-    const team = await TeamMember.find().sort({ order: 1, createdAt: -1 });
+    const team = await TeamMember.find().sort({ createdAt: -1 });
     res.json(team);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -368,6 +373,9 @@ app.delete('/api/team/:id', auth, adminOnly, async (req, res) => {
   try {
     const member = await TeamMember.findByIdAndDelete(req.params.id);
     if (!member) return res.status(404).json({ error: 'Team member not found.' });
+    if (member.photo?.publicId) {
+      await cloudinary.uploader.destroy(member.photo.publicId);
+    }
     res.json({ message: 'Team member deleted successfully.' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -461,7 +469,7 @@ app.get('/admin', (req, res) => {
 });
 
 // =====================================================
-// 12. TEST ROUTE (to verify server is working)
+// 12. TEST ROUTE
 // =====================================================
 app.get('/api/test', (req, res) => {
   res.json({
@@ -469,7 +477,7 @@ app.get('/api/test', (req, res) => {
     timestamp: new Date().toISOString(),
     routes: {
       auth: '/api/auth/register, /api/auth/login, /api/auth/me',
-      exhibitions: '/api/exhibitions',
+      home: '/api/home',
       projects: '/api/projects',
       team: '/api/team',
       settings: '/api/settings',
