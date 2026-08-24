@@ -46,6 +46,7 @@ mongoose.connect(MONGODB_URI)
   .catch(err => console.error('❌ MongoDB error:', err.message));
 
 // ─── MODELS ────────────────────────────────────────
+
 // User
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -521,6 +522,7 @@ app.put('/api/settings/:key', verifyToken, adminOnly, async (req, res) => {
 });
 
 // ─── SERVICES ROUTES ──────────────────────────────
+// GET all services (with images)
 app.get('/api/services', async (req, res) => {
   try {
     const services = await Service.find().sort({ title: 1 });
@@ -531,6 +533,7 @@ app.get('/api/services', async (req, res) => {
   }
 });
 
+// GET a single service by title
 app.get('/api/services/:title', async (req, res) => {
   try {
     const service = await Service.findOne({ title: req.params.title });
@@ -543,6 +546,7 @@ app.get('/api/services/:title', async (req, res) => {
   }
 });
 
+// Create or update service images (admin only)
 app.put('/api/services/:title', verifyToken, adminOnly, async (req, res) => {
   try {
     const title = req.params.title;
@@ -582,15 +586,23 @@ app.put('/api/services/:title', verifyToken, adminOnly, async (req, res) => {
   }
 });
 
-app.delete('/api/services/:title/image/:publicId', verifyToken, adminOnly, async (req, res) => {
+// ─── FIXED: DELETE a specific image from a service ───
+// Uses query parameter instead of path parameter to avoid slash issues in publicId
+app.delete('/api/services/:title/image', verifyToken, adminOnly, async (req, res) => {
   try {
-    const { title, publicId } = req.params;
+    const { title } = req.params;
+    const { publicId } = req.query; // get publicId from query string
+    if (!publicId) {
+      return res.status(400).json({ error: 'publicId is required' });
+    }
+
     const service = await Service.findOne({ title });
     if (!service) return res.status(404).json({ error: 'Service not found' });
 
     const index = service.publicIds.indexOf(publicId);
     if (index === -1) return res.status(404).json({ error: 'Image not found' });
 
+    // Delete from Cloudinary
     await cloudinary.uploader.destroy(publicId).catch(() => {});
 
     service.images.splice(index, 1);
@@ -604,11 +616,13 @@ app.delete('/api/services/:title/image/:publicId', verifyToken, adminOnly, async
   }
 });
 
+// Delete entire service (admin only)
 app.delete('/api/services/:title', verifyToken, adminOnly, async (req, res) => {
   try {
     const service = await Service.findOne({ title: req.params.title });
     if (!service) return res.status(404).json({ error: 'Service not found' });
 
+    // Delete all images from Cloudinary
     for (const publicId of service.publicIds) {
       await cloudinary.uploader.destroy(publicId).catch(() => {});
     }
@@ -630,6 +644,7 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
+// ─── ERROR HANDLER ────────────────────────────────────
 app.use((err, req, res, next) => {
   if (err) {
     console.error('❌ Unhandled error:', err);
@@ -638,6 +653,7 @@ app.use((err, req, res, next) => {
   next();
 });
 
+// ─── START ──────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌐 Home: http://localhost:${PORT}/`);
