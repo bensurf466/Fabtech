@@ -25,11 +25,11 @@ console.log('✅ Cloudinary configured');
 
 // ─── CORS ────────────────────────────────────────────
 app.use(cors({
-  origin: '*', // Allow all origins; change to your Netlify URL for production
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.options('*', cors()); // handle preflight
+app.options('*', cors());
 
 // ─── MIDDLEWARE ─────────────────────────────────────
 app.use(express.json({ limit: '50mb' }));
@@ -102,6 +102,16 @@ const SettingSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now },
 });
 const Setting = mongoose.model('Setting', SettingSchema);
+
+// ─── SERVICE MODEL ──────────────────────────────────
+const ServiceSchema = new mongoose.Schema({
+  title: { type: String, required: true, unique: true },
+  images: [{ type: String }],
+  publicIds: [{ type: String }],
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+});
+const Service = mongoose.model('Service', ServiceSchema);
 
 // ─── AUTH HELPERS ──────────────────────────────────
 function generateToken(user) {
@@ -235,8 +245,7 @@ app.post('/api/home', verifyToken, adminOnly, async (req, res) => {
     if (!type || !title) {
       return res.status(400).json({ error: 'Type and title are required' });
     }
-    let mediaUrl = '',
-      publicId = '';
+    let mediaUrl = '', publicId = '';
     if (req.files && req.files.media) {
       const file = req.files.media;
       const isVideo = file.mimetype.startsWith('video/');
@@ -244,14 +253,7 @@ app.post('/api/home', verifyToken, adminOnly, async (req, res) => {
       mediaUrl = result.secure_url;
       publicId = result.public_id;
     }
-    const item = new Home({
-      type,
-      title,
-      icon: icon || '',
-      description: description || '',
-      mediaUrl,
-      publicId,
-    });
+    const item = new Home({ type, title, icon: icon || '', description: description || '', mediaUrl, publicId });
     await item.save();
     res.status(201).json(item);
   } catch (err) {
@@ -265,8 +267,7 @@ app.put('/api/home/:id', verifyToken, adminOnly, async (req, res) => {
     const item = await Home.findById(req.params.id);
     if (!item) return res.status(404).json({ error: 'Item not found' });
     const { type, title, icon, description } = req.body;
-    let mediaUrl = item.mediaUrl,
-      publicId = item.publicId;
+    let mediaUrl = item.mediaUrl, publicId = item.publicId;
     if (req.files && req.files.media) {
       if (item.publicId) await cloudinary.uploader.destroy(item.publicId).catch(() => {});
       const file = req.files.media;
@@ -358,8 +359,7 @@ app.put('/api/projects/:id', verifyToken, adminOnly, async (req, res) => {
     const project = await Project.findById(req.params.id);
     if (!project) return res.status(404).json({ error: 'Project not found' });
     const { category, mediaType, heading, description } = req.body;
-    let mediaUrl = project.mediaUrl,
-      publicId = project.publicId;
+    let mediaUrl = project.mediaUrl, publicId = project.publicId;
     if (req.files && req.files.media) {
       if (project.publicId) await cloudinary.uploader.destroy(project.publicId).catch(() => {});
       const file = req.files.media;
@@ -419,20 +419,14 @@ app.post('/api/team', verifyToken, adminOnly, async (req, res) => {
     if (!name || !role) {
       return res.status(400).json({ error: 'Name and role are required' });
     }
-    let photoUrl = '',
-      publicId = '';
+    let photoUrl = '', publicId = '';
     if (req.files && req.files.photo) {
       const file = req.files.photo;
       const result = await uploadToCloudinary(file.data, 'fabtech/team', 'image');
       photoUrl = result.secure_url;
       publicId = result.public_id;
     }
-    const member = new Team({
-      name,
-      role,
-      bio: bio || '',
-      photo: { url: photoUrl, publicId },
-    });
+    const member = new Team({ name, role, bio: bio || '', photo: { url: photoUrl, publicId } });
     await member.save();
     res.status(201).json(member);
   } catch (err) {
@@ -446,8 +440,7 @@ app.put('/api/team/:id', verifyToken, adminOnly, async (req, res) => {
     const member = await Team.findById(req.params.id);
     if (!member) return res.status(404).json({ error: 'Team member not found' });
     const { name, role, bio } = req.body;
-    let photoUrl = member.photo?.url || '',
-      publicId = member.photo?.publicId || '';
+    let photoUrl = member.photo?.url || '', publicId = member.photo?.publicId || '';
     if (req.files && req.files.photo) {
       if (member.photo?.publicId) await cloudinary.uploader.destroy(member.photo.publicId).catch(() => {});
       const file = req.files.photo;
@@ -527,6 +520,107 @@ app.put('/api/settings/:key', verifyToken, adminOnly, async (req, res) => {
   }
 });
 
+// ─── SERVICES ROUTES ──────────────────────────────
+app.get('/api/services', async (req, res) => {
+  try {
+    const services = await Service.find().sort({ title: 1 });
+    res.json(services);
+  } catch (err) {
+    console.error('GET /api/services error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/services/:title', async (req, res) => {
+  try {
+    const service = await Service.findOne({ title: req.params.title });
+    if (!service) {
+      return res.json({ title: req.params.title, images: [], publicIds: [] });
+    }
+    res.json(service);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/services/:title', verifyToken, adminOnly, async (req, res) => {
+  try {
+    const title = req.params.title;
+    let service = await Service.findOne({ title });
+    if (!service) {
+      service = new Service({ title, images: [], publicIds: [] });
+    }
+
+    if (req.files && req.files.images) {
+      let files = req.files.images;
+      if (!Array.isArray(files)) files = [files];
+
+      const currentCount = service.images.length;
+      const maxNew = 6 - currentCount;
+      if (maxNew <= 0) {
+        return res.status(400).json({ error: 'Maximum 6 images allowed per service' });
+      }
+
+      const filesToUpload = files.slice(0, maxNew);
+      for (const file of filesToUpload) {
+        try {
+          const result = await uploadToCloudinary(file.data, 'fabtech/services', 'image');
+          service.images.push(result.secure_url);
+          service.publicIds.push(result.public_id);
+        } catch (err) {
+          console.error('Upload error:', err);
+        }
+      }
+    }
+
+    service.updatedAt = Date.now();
+    await service.save();
+    res.json(service);
+  } catch (err) {
+    console.error('PUT /api/services error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/services/:title/image/:publicId', verifyToken, adminOnly, async (req, res) => {
+  try {
+    const { title, publicId } = req.params;
+    const service = await Service.findOne({ title });
+    if (!service) return res.status(404).json({ error: 'Service not found' });
+
+    const index = service.publicIds.indexOf(publicId);
+    if (index === -1) return res.status(404).json({ error: 'Image not found' });
+
+    await cloudinary.uploader.destroy(publicId).catch(() => {});
+
+    service.images.splice(index, 1);
+    service.publicIds.splice(index, 1);
+    service.updatedAt = Date.now();
+    await service.save();
+    res.json(service);
+  } catch (err) {
+    console.error('DELETE /api/services/image error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/services/:title', verifyToken, adminOnly, async (req, res) => {
+  try {
+    const service = await Service.findOne({ title: req.params.title });
+    if (!service) return res.status(404).json({ error: 'Service not found' });
+
+    for (const publicId of service.publicIds) {
+      await cloudinary.uploader.destroy(publicId).catch(() => {});
+    }
+
+    await service.deleteOne();
+    res.json({ message: 'Service deleted' });
+  } catch (err) {
+    console.error('DELETE /api/services error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── TEST & STATIC ──────────────────────────────────
 app.get('/api/test', (req, res) => {
   res.json({ message: '✅ Server is alive!' });
@@ -536,7 +630,6 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
 
-// ─── ERROR HANDLER ────────────────────────────────────
 app.use((err, req, res, next) => {
   if (err) {
     console.error('❌ Unhandled error:', err);
@@ -545,7 +638,6 @@ app.use((err, req, res, next) => {
   next();
 });
 
-// ─── START ──────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌐 Home: http://localhost:${PORT}/`);
