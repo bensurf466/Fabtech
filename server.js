@@ -145,19 +145,18 @@ function adminOnly(req, res, next) {
   next();
 }
 
-// ─── IMAGE PROCESSING ──────────────────────────────
+// ─── IMAGE PROCESSING (HEIC support WITHOUT Sharp) ──
 async function processImage(buffer, originalName) {
   try {
-    // Check if it's a HEIC/HEIF file
     const ext = path.extname(originalName).toLowerCase();
     const isHeic = ext === '.heic' || ext === '.heif';
 
     let imageBuffer = buffer;
 
-    // If HEIC, convert to JPEG first using heic-convert
+    // Step 1: Convert HEIC to JPEG using heic-convert (NO Sharp)
     if (isHeic) {
       try {
-        console.log('🔄 Converting HEIC to JPEG...');
+        console.log('🔄 Converting HEIC to JPEG using heic-convert...');
         const outputBuffer = await heicConvert({
           buffer: buffer,
           format: 'JPEG',
@@ -167,12 +166,22 @@ async function processImage(buffer, originalName) {
         console.log('✅ HEIC converted to JPEG successfully');
       } catch (heicError) {
         console.error('❌ HEIC conversion failed:', heicError.message);
-        // Fall back to original buffer (Sharp might handle it, or it will fail)
-        imageBuffer = buffer;
+        // If HEIC conversion fails, try Sharp as fallback (may work on some systems)
+        try {
+          console.log('🔄 Trying Sharp as fallback...');
+          const sharpBuffer = await sharp(buffer)
+            .jpeg({ quality: 80 })
+            .toBuffer();
+          imageBuffer = sharpBuffer;
+          console.log('✅ Sharp fallback succeeded');
+        } catch (sharpFallbackError) {
+          console.error('❌ Sharp fallback also failed:', sharpFallbackError.message);
+          return buffer;
+        }
       }
     }
 
-    // Process with Sharp (resize + JPEG conversion)
+    // Step 2: Resize and optimize with Sharp (now working with JPEG)
     try {
       const processed = await sharp(imageBuffer)
         .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
@@ -181,12 +190,11 @@ async function processImage(buffer, originalName) {
       return processed;
     } catch (sharpError) {
       console.error('❌ Sharp processing failed:', sharpError.message);
-      // If Sharp fails, return the original buffer (or the HEIC-converted one)
       return imageBuffer;
     }
   } catch (err) {
     console.error('❌ processImage error:', err.message);
-    return buffer; // ultimate fallback
+    return buffer;
   }
 }
 
@@ -557,7 +565,6 @@ app.get('/api/settings/:key', async (req, res) => {
 app.put('/api/settings/:key', verifyToken, adminOnly, upload.single('media'), async (req, res) => {
   try {
     if (req.params.key === 'heroVideo' && req.file) {
-      // For hero video, we don't process with Sharp – just upload directly
       const result = await uploadToCloudinary(req.file.buffer, 'fabtech/hero', 'video');
       const setting = await Setting.findOneAndUpdate(
         { key: req.params.key },
