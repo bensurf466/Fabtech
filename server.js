@@ -6,7 +6,6 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
-const sharp = require('sharp');
 const path = require('path');
 
 const app = express();
@@ -30,7 +29,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(__dirname));
 
-// ─── MULTER SETUP – ULTRA‑PERMISSIVE (accepts HEIC, HEIF) ──
+// ─── MULTER SETUP – ACCEPTS HEIC, HEIF ─────────────
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
@@ -151,21 +150,7 @@ function adminOnly(req, res, next) {
   next();
 }
 
-// ─── IMAGE PROCESSING (Sharp) ──────────────────────
-async function processImage(buffer) {
-  try {
-    const processed = await sharp(buffer)
-      .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 80 })
-      .toBuffer();
-    return processed;
-  } catch (err) {
-    console.error('❌ Sharp processing failed, using original buffer:', err.message);
-    return buffer;
-  }
-}
-
-// ─── CLOUDINARY UPLOAD ────────────────────────────
+// ─── CLOUDINARY UPLOAD (NO Sharp) ──────────────────
 async function uploadToCloudinary(buffer, folder = 'fabtech', resourceType = 'auto') {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -275,8 +260,8 @@ app.post('/api/home', verifyToken, adminOnly, upload.single('media'), async (req
     let mediaUrl = '', publicId = '';
     if (req.file) {
       const isVideo = req.file.mimetype.startsWith('video/');
-      const processedBuffer = isVideo ? req.file.buffer : await processImage(req.file.buffer);
-      const result = await uploadToCloudinary(processedBuffer, 'fabtech/home', isVideo ? 'video' : 'image');
+      const resourceType = isVideo ? 'video' : 'auto';
+      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/home', resourceType);
       mediaUrl = result.secure_url;
       publicId = result.public_id;
       console.log(`📤 Home upload: ${isVideo ? 'video' : 'image'} -> ${mediaUrl}`);
@@ -299,8 +284,8 @@ app.put('/api/home/:id', verifyToken, adminOnly, upload.single('media'), async (
     if (req.file) {
       if (item.publicId) await cloudinary.uploader.destroy(item.publicId).catch(() => {});
       const isVideo = req.file.mimetype.startsWith('video/');
-      const processedBuffer = isVideo ? req.file.buffer : await processImage(req.file.buffer);
-      const result = await uploadToCloudinary(processedBuffer, 'fabtech/home', isVideo ? 'video' : 'image');
+      const resourceType = isVideo ? 'video' : 'auto';
+      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/home', resourceType);
       mediaUrl = result.secure_url;
       publicId = result.public_id;
       console.log(`📤 Home update: ${isVideo ? 'video' : 'image'} -> ${mediaUrl}`);
@@ -366,8 +351,8 @@ app.post('/api/projects', verifyToken, adminOnly, upload.single('media'), async 
       return res.status(400).json({ error: 'Media file is required' });
     }
     const isVideo = mediaType === 'video' || req.file.mimetype.startsWith('video/');
-    const processedBuffer = isVideo ? req.file.buffer : await processImage(req.file.buffer);
-    const result = await uploadToCloudinary(processedBuffer, 'fabtech/projects', isVideo ? 'video' : 'image');
+    const resourceType = isVideo ? 'video' : 'auto';
+    const result = await uploadToCloudinary(req.file.buffer, 'fabtech/projects', resourceType);
     console.log(`📤 Project upload: ${isVideo ? 'video' : 'photo'} -> ${result.secure_url}`);
     const project = new Project({
       category,
@@ -394,8 +379,8 @@ app.put('/api/projects/:id', verifyToken, adminOnly, upload.single('media'), asy
     if (req.file) {
       if (project.publicId) await cloudinary.uploader.destroy(project.publicId).catch(() => {});
       const isVideo = mediaType === 'video' || req.file.mimetype.startsWith('video/');
-      const processedBuffer = isVideo ? req.file.buffer : await processImage(req.file.buffer);
-      const result = await uploadToCloudinary(processedBuffer, 'fabtech/projects', isVideo ? 'video' : 'image');
+      const resourceType = isVideo ? 'video' : 'auto';
+      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/projects', resourceType);
       mediaUrl = result.secure_url;
       publicId = result.public_id;
       console.log(`📤 Project update: ${isVideo ? 'video' : 'photo'} -> ${mediaUrl}`);
@@ -454,8 +439,7 @@ app.post('/api/team', verifyToken, adminOnly, upload.single('photo'), async (req
     }
     let photoUrl = '', publicId = '';
     if (req.file) {
-      const processedBuffer = await processImage(req.file.buffer);
-      const result = await uploadToCloudinary(processedBuffer, 'fabtech/team', 'image');
+      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/team', 'auto');
       photoUrl = result.secure_url;
       publicId = result.public_id;
       console.log(`📤 Team photo upload -> ${photoUrl}`);
@@ -477,8 +461,7 @@ app.put('/api/team/:id', verifyToken, adminOnly, upload.single('photo'), async (
     let photoUrl = member.photo?.url || '', publicId = member.photo?.publicId || '';
     if (req.file) {
       if (member.photo?.publicId) await cloudinary.uploader.destroy(member.photo.publicId).catch(() => {});
-      const processedBuffer = await processImage(req.file.buffer);
-      const result = await uploadToCloudinary(processedBuffer, 'fabtech/team', 'image');
+      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/team', 'auto');
       photoUrl = result.secure_url;
       publicId = result.public_id;
       console.log(`📤 Team photo update -> ${photoUrl}`);
@@ -596,8 +579,7 @@ app.put('/api/services/:title', verifyToken, adminOnly, upload.array('images', 6
       const filesToUpload = req.files.slice(0, maxNew);
       for (const file of filesToUpload) {
         try {
-          const processedBuffer = await processImage(file.buffer);
-          const result = await uploadToCloudinary(processedBuffer, 'fabtech/services', 'image');
+          const result = await uploadToCloudinary(file.buffer, 'fabtech/services', 'auto');
           service.images.push(result.secure_url);
           service.publicIds.push(result.public_id);
           console.log(`📤 Service image uploaded -> ${result.secure_url}`);
