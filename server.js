@@ -145,7 +145,7 @@ function adminOnly(req, res, next) {
   next();
 }
 
-// ─── IMAGE PROCESSING (HEIC support WITHOUT Sharp) ──
+// ─── IMAGE PROCESSING – HEIC SUPPORT ──────────────
 async function processImage(buffer, originalName) {
   try {
     const ext = path.extname(originalName).toLowerCase();
@@ -153,10 +153,10 @@ async function processImage(buffer, originalName) {
 
     let imageBuffer = buffer;
 
-    // Step 1: Convert HEIC to JPEG using heic-convert (NO Sharp)
+    // Step 1: Convert HEIC to JPEG using heic-convert
     if (isHeic) {
       try {
-        console.log('🔄 Converting HEIC to JPEG using heic-convert...');
+        console.log('🔄 Converting HEIC to JPEG...');
         const outputBuffer = await heicConvert({
           buffer: buffer,
           format: 'JPEG',
@@ -166,9 +166,9 @@ async function processImage(buffer, originalName) {
         console.log('✅ HEIC converted to JPEG successfully');
       } catch (heicError) {
         console.error('❌ HEIC conversion failed:', heicError.message);
-        // If HEIC conversion fails, try Sharp as fallback (may work on some systems)
+        // Fallback: try Sharp directly (may work on some systems)
         try {
-          console.log('🔄 Trying Sharp as fallback...');
+          console.log('🔄 Trying Sharp fallback...');
           const sharpBuffer = await sharp(buffer)
             .jpeg({ quality: 80 })
             .toBuffer();
@@ -181,7 +181,7 @@ async function processImage(buffer, originalName) {
       }
     }
 
-    // Step 2: Resize and optimize with Sharp (now working with JPEG)
+    // Step 2: Resize and optimize with Sharp
     try {
       const processed = await sharp(imageBuffer)
         .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
