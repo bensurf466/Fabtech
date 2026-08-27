@@ -6,6 +6,8 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
+const sharp = require('sharp');
+const heicConvert = require('heic-convert');
 const path = require('path');
 
 const app = express();
@@ -29,7 +31,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.static(__dirname));
 
-// ─── MULTER SETUP – ACCEPTS HEIC, HEIF ─────────────
+// ─── MULTER SETUP ──────────────────────────────────
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
@@ -52,8 +54,6 @@ mongoose.connect(MONGODB_URI)
   .catch(err => console.error('❌ DB error:', err.message));
 
 // ─── MODELS ────────────────────────────────────────
-
-// User
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, lowercase: true },
@@ -64,7 +64,6 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
-// Home
 const HomeSchema = new mongoose.Schema({
   type: { type: String, enum: ['category', 'video'], required: true },
   title: { type: String, required: true },
@@ -76,7 +75,6 @@ const HomeSchema = new mongoose.Schema({
 });
 const Home = mongoose.model('Home', HomeSchema);
 
-// Projects
 const ProjectSchema = new mongoose.Schema({
   category: {
     type: String,
@@ -92,7 +90,6 @@ const ProjectSchema = new mongoose.Schema({
 });
 const Project = mongoose.model('Project', ProjectSchema);
 
-// Team
 const TeamSchema = new mongoose.Schema({
   name: { type: String, required: true },
   role: { type: String, required: true },
@@ -102,7 +99,6 @@ const TeamSchema = new mongoose.Schema({
 });
 const Team = mongoose.model('Team', TeamSchema);
 
-// Settings
 const SettingSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
   value: { type: mongoose.Schema.Types.Mixed, required: true },
@@ -110,7 +106,6 @@ const SettingSchema = new mongoose.Schema({
 });
 const Setting = mongoose.model('Setting', SettingSchema);
 
-// Service
 const ServiceSchema = new mongoose.Schema({
   title: { type: String, required: true, unique: true },
   images: [{ type: String }],
@@ -150,7 +145,52 @@ function adminOnly(req, res, next) {
   next();
 }
 
-// ─── CLOUDINARY UPLOAD (NO Sharp) ──────────────────
+// ─── IMAGE PROCESSING ──────────────────────────────
+async function processImage(buffer, originalName) {
+  try {
+    // Check if it's a HEIC/HEIF file
+    const ext = path.extname(originalName).toLowerCase();
+    const isHeic = ext === '.heic' || ext === '.heif';
+
+    let imageBuffer = buffer;
+
+    // If HEIC, convert to JPEG first using heic-convert
+    if (isHeic) {
+      try {
+        console.log('🔄 Converting HEIC to JPEG...');
+        const outputBuffer = await heicConvert({
+          buffer: buffer,
+          format: 'JPEG',
+          quality: 0.9,
+        });
+        imageBuffer = outputBuffer;
+        console.log('✅ HEIC converted to JPEG successfully');
+      } catch (heicError) {
+        console.error('❌ HEIC conversion failed:', heicError.message);
+        // Fall back to original buffer (Sharp might handle it, or it will fail)
+        imageBuffer = buffer;
+      }
+    }
+
+    // Process with Sharp (resize + JPEG conversion)
+    try {
+      const processed = await sharp(imageBuffer)
+        .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      return processed;
+    } catch (sharpError) {
+      console.error('❌ Sharp processing failed:', sharpError.message);
+      // If Sharp fails, return the original buffer (or the HEIC-converted one)
+      return imageBuffer;
+    }
+  } catch (err) {
+    console.error('❌ processImage error:', err.message);
+    return buffer; // ultimate fallback
+  }
+}
+
+// ─── CLOUDINARY UPLOAD ────────────────────────────
 async function uploadToCloudinary(buffer, folder = 'fabtech', resourceType = 'auto') {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -260,8 +300,8 @@ app.post('/api/home', verifyToken, adminOnly, upload.single('media'), async (req
     let mediaUrl = '', publicId = '';
     if (req.file) {
       const isVideo = req.file.mimetype.startsWith('video/');
-      const resourceType = isVideo ? 'video' : 'auto';
-      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/home', resourceType);
+      const processedBuffer = isVideo ? req.file.buffer : await processImage(req.file.buffer, req.file.originalname);
+      const result = await uploadToCloudinary(processedBuffer, 'fabtech/home', isVideo ? 'video' : 'image');
       mediaUrl = result.secure_url;
       publicId = result.public_id;
       console.log(`📤 Home upload: ${isVideo ? 'video' : 'image'} -> ${mediaUrl}`);
@@ -284,8 +324,8 @@ app.put('/api/home/:id', verifyToken, adminOnly, upload.single('media'), async (
     if (req.file) {
       if (item.publicId) await cloudinary.uploader.destroy(item.publicId).catch(() => {});
       const isVideo = req.file.mimetype.startsWith('video/');
-      const resourceType = isVideo ? 'video' : 'auto';
-      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/home', resourceType);
+      const processedBuffer = isVideo ? req.file.buffer : await processImage(req.file.buffer, req.file.originalname);
+      const result = await uploadToCloudinary(processedBuffer, 'fabtech/home', isVideo ? 'video' : 'image');
       mediaUrl = result.secure_url;
       publicId = result.public_id;
       console.log(`📤 Home update: ${isVideo ? 'video' : 'image'} -> ${mediaUrl}`);
@@ -351,8 +391,8 @@ app.post('/api/projects', verifyToken, adminOnly, upload.single('media'), async 
       return res.status(400).json({ error: 'Media file is required' });
     }
     const isVideo = mediaType === 'video' || req.file.mimetype.startsWith('video/');
-    const resourceType = isVideo ? 'video' : 'auto';
-    const result = await uploadToCloudinary(req.file.buffer, 'fabtech/projects', resourceType);
+    const processedBuffer = isVideo ? req.file.buffer : await processImage(req.file.buffer, req.file.originalname);
+    const result = await uploadToCloudinary(processedBuffer, 'fabtech/projects', isVideo ? 'video' : 'image');
     console.log(`📤 Project upload: ${isVideo ? 'video' : 'photo'} -> ${result.secure_url}`);
     const project = new Project({
       category,
@@ -379,8 +419,8 @@ app.put('/api/projects/:id', verifyToken, adminOnly, upload.single('media'), asy
     if (req.file) {
       if (project.publicId) await cloudinary.uploader.destroy(project.publicId).catch(() => {});
       const isVideo = mediaType === 'video' || req.file.mimetype.startsWith('video/');
-      const resourceType = isVideo ? 'video' : 'auto';
-      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/projects', resourceType);
+      const processedBuffer = isVideo ? req.file.buffer : await processImage(req.file.buffer, req.file.originalname);
+      const result = await uploadToCloudinary(processedBuffer, 'fabtech/projects', isVideo ? 'video' : 'image');
       mediaUrl = result.secure_url;
       publicId = result.public_id;
       console.log(`📤 Project update: ${isVideo ? 'video' : 'photo'} -> ${mediaUrl}`);
@@ -439,7 +479,8 @@ app.post('/api/team', verifyToken, adminOnly, upload.single('photo'), async (req
     }
     let photoUrl = '', publicId = '';
     if (req.file) {
-      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/team', 'auto');
+      const processedBuffer = await processImage(req.file.buffer, req.file.originalname);
+      const result = await uploadToCloudinary(processedBuffer, 'fabtech/team', 'image');
       photoUrl = result.secure_url;
       publicId = result.public_id;
       console.log(`📤 Team photo upload -> ${photoUrl}`);
@@ -461,7 +502,8 @@ app.put('/api/team/:id', verifyToken, adminOnly, upload.single('photo'), async (
     let photoUrl = member.photo?.url || '', publicId = member.photo?.publicId || '';
     if (req.file) {
       if (member.photo?.publicId) await cloudinary.uploader.destroy(member.photo.publicId).catch(() => {});
-      const result = await uploadToCloudinary(req.file.buffer, 'fabtech/team', 'auto');
+      const processedBuffer = await processImage(req.file.buffer, req.file.originalname);
+      const result = await uploadToCloudinary(processedBuffer, 'fabtech/team', 'image');
       photoUrl = result.secure_url;
       publicId = result.public_id;
       console.log(`📤 Team photo update -> ${photoUrl}`);
@@ -515,6 +557,7 @@ app.get('/api/settings/:key', async (req, res) => {
 app.put('/api/settings/:key', verifyToken, adminOnly, upload.single('media'), async (req, res) => {
   try {
     if (req.params.key === 'heroVideo' && req.file) {
+      // For hero video, we don't process with Sharp – just upload directly
       const result = await uploadToCloudinary(req.file.buffer, 'fabtech/hero', 'video');
       const setting = await Setting.findOneAndUpdate(
         { key: req.params.key },
@@ -579,7 +622,8 @@ app.put('/api/services/:title', verifyToken, adminOnly, upload.array('images', 6
       const filesToUpload = req.files.slice(0, maxNew);
       for (const file of filesToUpload) {
         try {
-          const result = await uploadToCloudinary(file.buffer, 'fabtech/services', 'auto');
+          const processedBuffer = await processImage(file.buffer, file.originalname);
+          const result = await uploadToCloudinary(processedBuffer, 'fabtech/services', 'image');
           service.images.push(result.secure_url);
           service.publicIds.push(result.public_id);
           console.log(`📤 Service image uploaded -> ${result.secure_url}`);
