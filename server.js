@@ -34,10 +34,14 @@ app.options('*', cors());
 // ─── MIDDLEWARE ─────────────────────────────────────
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// ─── UPDATED: fileUpload with HEIC/HEIF support ────
 app.use(fileUpload({
   limits: { fileSize: 50 * 1024 * 1024 },
   abortOnLimit: true,
+  // No file filter – accept everything; we'll check later
 }));
+
 app.use(express.static(__dirname));
 
 // ─── DATABASE ──────────────────────────────────────
@@ -104,7 +108,7 @@ const SettingSchema = new mongoose.Schema({
 });
 const Setting = mongoose.model('Setting', SettingSchema);
 
-// ─── SERVICE MODEL ──────────────────────────────────
+// Service
 const ServiceSchema = new mongoose.Schema({
   title: { type: String, required: true, unique: true },
   images: [{ type: String }],
@@ -144,8 +148,9 @@ function adminOnly(req, res, next) {
   next();
 }
 
-// ─── CLOUDINARY UPLOAD ────────────────────────────
+// ─── UPDATED: CLOUDINARY UPLOAD – FORCE AUTO DETECTION ───
 function uploadToCloudinary(buffer, folder = 'fabtech', resourceType = 'auto') {
+  // resourceType now defaults to 'auto' – accepts HEIC, HEIF, WebP, etc.
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       { folder, resource_type: resourceType },
@@ -249,10 +254,14 @@ app.post('/api/home', verifyToken, adminOnly, async (req, res) => {
     let mediaUrl = '', publicId = '';
     if (req.files && req.files.media) {
       const file = req.files.media;
-      const isVideo = file.mimetype.startsWith('video/');
-      const result = await uploadToCloudinary(file.data, 'fabtech/home', isVideo ? 'video' : 'image');
+      // Determine if video or image by MIME type (or fallback)
+      const isVideo = file.mimetype && file.mimetype.startsWith('video/');
+      // Use 'auto' for images (to support HEIC), and 'video' for videos
+      const resourceType = isVideo ? 'video' : 'auto';
+      const result = await uploadToCloudinary(file.data, 'fabtech/home', resourceType);
       mediaUrl = result.secure_url;
       publicId = result.public_id;
+      console.log(`📤 Uploaded ${isVideo ? 'video' : 'image'} (${file.mimetype || 'unknown'}) -> ${mediaUrl}`);
     }
     const item = new Home({ type, title, icon: icon || '', description: description || '', mediaUrl, publicId });
     await item.save();
@@ -272,10 +281,12 @@ app.put('/api/home/:id', verifyToken, adminOnly, async (req, res) => {
     if (req.files && req.files.media) {
       if (item.publicId) await cloudinary.uploader.destroy(item.publicId).catch(() => {});
       const file = req.files.media;
-      const isVideo = file.mimetype.startsWith('video/');
-      const result = await uploadToCloudinary(file.data, 'fabtech/home', isVideo ? 'video' : 'image');
+      const isVideo = file.mimetype && file.mimetype.startsWith('video/');
+      const resourceType = isVideo ? 'video' : 'auto';
+      const result = await uploadToCloudinary(file.data, 'fabtech/home', resourceType);
       mediaUrl = result.secure_url;
       publicId = result.public_id;
+      console.log(`📤 Updated ${isVideo ? 'video' : 'image'} (${file.mimetype || 'unknown'}) -> ${mediaUrl}`);
     }
     item.type = type || item.type;
     item.title = title || item.title;
@@ -338,7 +349,11 @@ app.post('/api/projects', verifyToken, adminOnly, async (req, res) => {
       return res.status(400).json({ error: 'Media file is required' });
     }
     const file = req.files.media;
-    const result = await uploadToCloudinary(file.data, 'fabtech/projects', mediaType === 'video' ? 'video' : 'image');
+    // Use 'auto' for photos, 'video' for videos
+    const isVideo = mediaType === 'video' || (file.mimetype && file.mimetype.startsWith('video/'));
+    const resourceType = isVideo ? 'video' : 'auto';
+    const result = await uploadToCloudinary(file.data, 'fabtech/projects', resourceType);
+    console.log(`📤 Project upload: ${isVideo ? 'video' : 'photo'} (${file.mimetype || 'unknown'}) -> ${result.secure_url}`);
     const project = new Project({
       category,
       mediaType,
@@ -364,9 +379,12 @@ app.put('/api/projects/:id', verifyToken, adminOnly, async (req, res) => {
     if (req.files && req.files.media) {
       if (project.publicId) await cloudinary.uploader.destroy(project.publicId).catch(() => {});
       const file = req.files.media;
-      const result = await uploadToCloudinary(file.data, 'fabtech/projects', mediaType === 'video' ? 'video' : 'image');
+      const isVideo = mediaType === 'video' || (file.mimetype && file.mimetype.startsWith('video/'));
+      const resourceType = isVideo ? 'video' : 'auto';
+      const result = await uploadToCloudinary(file.data, 'fabtech/projects', resourceType);
       mediaUrl = result.secure_url;
       publicId = result.public_id;
+      console.log(`📤 Project update: ${isVideo ? 'video' : 'photo'} (${file.mimetype || 'unknown'}) -> ${mediaUrl}`);
     }
     project.category = category || project.category;
     project.mediaType = mediaType || project.mediaType;
@@ -423,9 +441,11 @@ app.post('/api/team', verifyToken, adminOnly, async (req, res) => {
     let photoUrl = '', publicId = '';
     if (req.files && req.files.photo) {
       const file = req.files.photo;
-      const result = await uploadToCloudinary(file.data, 'fabtech/team', 'image');
+      // Use 'auto' for team photos (HEIC support)
+      const result = await uploadToCloudinary(file.data, 'fabtech/team', 'auto');
       photoUrl = result.secure_url;
       publicId = result.public_id;
+      console.log(`📤 Team photo uploaded (${file.mimetype || 'unknown'}) -> ${photoUrl}`);
     }
     const member = new Team({ name, role, bio: bio || '', photo: { url: photoUrl, publicId } });
     await member.save();
@@ -445,9 +465,10 @@ app.put('/api/team/:id', verifyToken, adminOnly, async (req, res) => {
     if (req.files && req.files.photo) {
       if (member.photo?.publicId) await cloudinary.uploader.destroy(member.photo.publicId).catch(() => {});
       const file = req.files.photo;
-      const result = await uploadToCloudinary(file.data, 'fabtech/team', 'image');
+      const result = await uploadToCloudinary(file.data, 'fabtech/team', 'auto');
       photoUrl = result.secure_url;
       publicId = result.public_id;
+      console.log(`📤 Team photo updated (${file.mimetype || 'unknown'}) -> ${photoUrl}`);
     }
     member.name = name || member.name;
     member.role = role || member.role;
@@ -499,12 +520,14 @@ app.put('/api/settings/:key', verifyToken, adminOnly, async (req, res) => {
   try {
     if (req.params.key === 'heroVideo' && req.files && req.files.media) {
       const file = req.files.media;
+      // Hero video is always a video
       const result = await uploadToCloudinary(file.data, 'fabtech/hero', 'video');
       const setting = await Setting.findOneAndUpdate(
         { key: req.params.key },
         { key: req.params.key, value: result.secure_url },
         { new: true, upsert: true }
       );
+      console.log(`📤 Hero video uploaded -> ${result.secure_url}`);
       return res.json(setting);
     }
     const { value } = req.body;
@@ -522,7 +545,6 @@ app.put('/api/settings/:key', verifyToken, adminOnly, async (req, res) => {
 });
 
 // ─── SERVICES ROUTES ──────────────────────────────
-// GET all services (with images)
 app.get('/api/services', async (req, res) => {
   try {
     const services = await Service.find().sort({ title: 1 });
@@ -533,7 +555,6 @@ app.get('/api/services', async (req, res) => {
   }
 });
 
-// GET a single service by title
 app.get('/api/services/:title', async (req, res) => {
   try {
     const service = await Service.findOne({ title: req.params.title });
@@ -546,7 +567,6 @@ app.get('/api/services/:title', async (req, res) => {
   }
 });
 
-// Create or update service images (admin only)
 app.put('/api/services/:title', verifyToken, adminOnly, async (req, res) => {
   try {
     const title = req.params.title;
@@ -568,9 +588,11 @@ app.put('/api/services/:title', verifyToken, adminOnly, async (req, res) => {
       const filesToUpload = files.slice(0, maxNew);
       for (const file of filesToUpload) {
         try {
-          const result = await uploadToCloudinary(file.data, 'fabtech/services', 'image');
+          // Use 'auto' for service images (HEIC support)
+          const result = await uploadToCloudinary(file.data, 'fabtech/services', 'auto');
           service.images.push(result.secure_url);
           service.publicIds.push(result.public_id);
+          console.log(`📤 Service image uploaded (${file.mimetype || 'unknown'}) -> ${result.secure_url}`);
         } catch (err) {
           console.error('Upload error:', err);
         }
@@ -586,12 +608,10 @@ app.put('/api/services/:title', verifyToken, adminOnly, async (req, res) => {
   }
 });
 
-// ─── FIXED: DELETE a specific image from a service ───
-// Uses query parameter instead of path parameter to avoid slash issues in publicId
 app.delete('/api/services/:title/image', verifyToken, adminOnly, async (req, res) => {
   try {
     const { title } = req.params;
-    const { publicId } = req.query; // get publicId from query string
+    const { publicId } = req.query;
     if (!publicId) {
       return res.status(400).json({ error: 'publicId is required' });
     }
@@ -602,7 +622,6 @@ app.delete('/api/services/:title/image', verifyToken, adminOnly, async (req, res
     const index = service.publicIds.indexOf(publicId);
     if (index === -1) return res.status(404).json({ error: 'Image not found' });
 
-    // Delete from Cloudinary
     await cloudinary.uploader.destroy(publicId).catch(() => {});
 
     service.images.splice(index, 1);
@@ -616,13 +635,11 @@ app.delete('/api/services/:title/image', verifyToken, adminOnly, async (req, res
   }
 });
 
-// Delete entire service (admin only)
 app.delete('/api/services/:title', verifyToken, adminOnly, async (req, res) => {
   try {
     const service = await Service.findOne({ title: req.params.title });
     if (!service) return res.status(404).json({ error: 'Service not found' });
 
-    // Delete all images from Cloudinary
     for (const publicId of service.publicIds) {
       await cloudinary.uploader.destroy(publicId).catch(() => {});
     }
